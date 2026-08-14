@@ -1,0 +1,25 @@
+{
+  "users": [
+    {
+      "id": "1",
+      "email": "auto@test.com",
+      "password": "password123",
+      "role": "automobiliste",
+      "nom": "Jean Automobiliste"
+    },
+    {
+      "id": "2",
+      "email": "garage@test.com",
+      "password": "password123",
+      "role": "garagiste",
+      "nom": "Garage Central"
+    },
+    {
+      "id": "3",
+      "email": "admin@test.com",
+      "password": "password123",
+      "role": "admin",
+      "nom": "Super Admin"
+    }
+  ]
+}

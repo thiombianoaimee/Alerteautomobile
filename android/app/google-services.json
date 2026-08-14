@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "1096667933987",
+    "project_id": "visiteapp-b03c3",
+    "storage_bucket": "visiteapp-b03c3.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1096667933987:android:be06128eac5bd8643b7096",
+        "android_client_info": {
+          "package_name": "com.example.visite_app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyA1Ouo2PL3zklv-NV39rvyBgs3fPTLciwM"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
