@@ -16,5 +16,8 @@ class ApiConfig {
   static const String creneaux = "$baseUrl/creneaux";
 
   // Rendez-vous
-  static const String rdv = "$baseUrl/rdv";
+  static const String rdv = "$baseUrl/appointments";
+
+  // Notifications
+  static const String notifications = "$baseUrl/notifications";
 }

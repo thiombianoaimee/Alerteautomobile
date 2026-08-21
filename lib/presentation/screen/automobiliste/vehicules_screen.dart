@@ -29,6 +29,8 @@ class _VehiculesScreenState extends State<VehiculesScreen> {
   TextEditingController();
 
   DateTime? dateVisiteTechnique;
+  String? categorie;
+
   Future<void> chargerToken() async {
 
     final savedToken = await StorageService.getToken();
@@ -41,11 +43,14 @@ class _VehiculesScreenState extends State<VehiculesScreen> {
   }
 
   Future<void> choisirDate() async {
+    DateTime aujourdHui = DateTime.now();
+
     DateTime? date = await showDatePicker(
       context: context,
-      initialDate: DateTime.now(),
+      initialDate: aujourdHui,
       firstDate: DateTime(2000),
-      lastDate: DateTime(2100),
+      lastDate: aujourdHui,
+      locale: const Locale('fr', 'FR'),
     );
 
     if (date != null) {
@@ -71,6 +76,7 @@ class _VehiculesScreenState extends State<VehiculesScreen> {
     if (immatriculationController.text.isEmpty ||
         marqueController.text.isEmpty ||
         modeleController.text.isEmpty ||
+        categorie == null ||
         dateVisiteTechnique == null) {
 
       ScaffoldMessenger.of(context).showSnackBar(
@@ -89,7 +95,9 @@ class _VehiculesScreenState extends State<VehiculesScreen> {
         "marque": marqueController.text,
         "modele": modeleController.text,
         "immatriculation": immatriculationController.text,
-        "dateVisiteTechnique": dateVisiteTechnique!.toIso8601String(),
+        "categorie": categorie,
+        "dateDerniereVisiteTechnique": dateVisiteTechnique!.toIso8601String(),
+
       },
       token,
 
@@ -264,6 +272,52 @@ class _VehiculesScreenState extends State<VehiculesScreen> {
 
               ),
 
+              const SizedBox(height: 15),
+
+              DropdownButtonFormField<String>(
+                initialValue: categorie,
+
+                decoration: InputDecoration(
+                  labelText: "Catégorie du véhicule",
+                  prefixIcon: const Icon(Icons.category),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+
+                items: const [
+                  DropdownMenuItem(
+                    value: "particulier",
+                    child: Text("Particulier"),
+                  ),
+                  DropdownMenuItem(
+                    value: "utilitaire",
+                    child: Text("Utilitaire"),
+                  ),
+                  DropdownMenuItem(
+                    value: "transport_personnes",
+                    child: Text("Transport de personnes"),
+                  ),
+                  DropdownMenuItem(
+                    value: "taxi",
+                    child: Text("Taxi"),
+                  ),
+                  DropdownMenuItem(
+                    value: "auto_ecole",
+                    child: Text("Auto-école"),
+                  ),
+                  DropdownMenuItem(
+                    value: "tricycle",
+                    child: Text("Tricycle"),
+                  ),
+                ],
+
+                onChanged: (value) {
+                  setState(() {
+                    categorie = value;
+                  });
+                },
+              ),
 
 
               const SizedBox(height: 15),

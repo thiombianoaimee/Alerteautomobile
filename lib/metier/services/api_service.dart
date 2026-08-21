@@ -73,18 +73,27 @@ class ApiService {
 
     return jsonDecode(response.body);
   }
+
+  // Récupérer tous les véhicules - Admin
   static Future<List<dynamic>> getVehicles(String token) async {
 
     final response = await http.get(
       Uri.parse(ApiConfig.vehicles),
       headers: {
         "Authorization": "Bearer $token",
+        "Content-Type": "application/json",
       },
     );
 
-    final data = jsonDecode(response.body);
+    debugPrint("REPONSE VEHICULES ADMIN : ${response.body}");
 
-    return data;
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body);
+    } else {
+      throw Exception(
+        "Erreur récupération véhicules : ${response.body}",
+      );
+    }
   }
 
 // Liste des véhicules par automobilistes
@@ -120,7 +129,34 @@ class ApiService {
     }
 
   }
+// Récupérer les véhicules d'un automobiliste précis - Admin
+  static Future<List<dynamic>> getVehiclesByAutomobiliste(
+      String automobilisteId,
+      String token,
+      ) async {
 
+    final response = await http.get(
+      Uri.parse(
+        "${ApiConfig.baseUrl}/vehicles/automobiliste/$automobilisteId",
+      ),
+      headers: {
+        "Authorization": "Bearer $token",
+        "Content-Type": "application/json",
+      },
+    );
+
+    debugPrint(
+      "REPONSE VEHICULES AUTOMOBILISTE : ${response.body}",
+    );
+
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body);
+    } else {
+      throw Exception(
+        "Erreur récupération véhicules : ${response.body}",
+      );
+    }
+  }
   // Ajouter une disponibilité
   static Future<Map<String, dynamic>> addCreneau(
       Map<String, dynamic> creneauData,
@@ -210,6 +246,34 @@ class ApiService {
     }
   }
 
+  // Activer ou désactiver le compte d'un utilisateur
+  static Future<Map<String, dynamic>> toggleUserStatus(
+      String userId,
+      String token,
+      ) async {
+
+    final response = await http.put(
+      Uri.parse(
+        "${ApiConfig.baseUrl}/users/$userId/toggle-status",
+      ),
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": "Bearer $token",
+      },
+    );
+
+    debugPrint("REPONSE ACTIVATION/DESACTIVATION : ${response.body}");
+
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body);
+    } else {
+      throw Exception(
+        "Erreur activation/désactivation : ${response.body}",
+      );
+    }
+  }
+
+
   // Récupérer la liste des automobilistes
   static Future<List<dynamic>> getAutomobilistes() async {
     final response = await http.get(
@@ -251,6 +315,34 @@ class ApiService {
 
 }
 
+// Récupérer les garagistes disponibles pour une date
+  static Future<Map<String, dynamic>> getGaragistesDisponibles(
+      String date,
+      ) async {
+
+    final url =
+        "${ApiConfig.baseUrl}/rdv/garagistes-disponibles?date=$date";
+
+    final response = await http.get(
+      Uri.parse(url),
+      headers: {
+        "Content-Type": "application/json",
+      },
+    );
+
+    if (response.statusCode == 200) {
+
+      return jsonDecode(response.body);
+
+    } else {
+
+      throw Exception(
+        "Erreur récupération garagistes disponibles : ${response.body}",
+      );
+
+    }
+  }
+
 
 // Récupérer les créneaux disponibles d'un garagiste
   static Future<List<dynamic>> getCreneauxDisponibles(
@@ -278,27 +370,27 @@ class ApiService {
   }
 // Créer un rendez-vous
   static Future<Map<String, dynamic>> creerRdv(
-      Map<String, dynamic> rdvData) async {
+      Map<String, dynamic> rdvData,
+      String token,
+      ) async {
 
     final response = await http.post(
-
       Uri.parse(ApiConfig.rdv),
 
       headers: {
         "Content-Type": "application/json",
+        "Authorization": "Bearer $token",
       },
 
       body: jsonEncode(rdvData),
-
     );
-
-
+    
     if (response.statusCode == 201 ||
         response.statusCode == 200) {
 
       final data = jsonDecode(response.body);
 
-      debugPrint(data.toString());
+      debugPrint("RDV CREE AVEC SUCCES : $data");
 
       return data;
 
@@ -307,9 +399,7 @@ class ApiService {
       throw Exception(
         "Erreur création rendez-vous : ${response.body}",
       );
-
     }
-
   }
 // Récupérer les rendez-vous de l'automobiliste connecté
   static Future<List<dynamic>> getMesRendezVous(String token) async {
@@ -407,6 +497,61 @@ class ApiService {
       );
     }
   }
+
+
+  // Récupérer tous les rendez-vous - Administrateur
+  static Future<List<dynamic>> getAllAppointments(String token) async {
+
+    final response = await http.get(
+      Uri.parse("${ApiConfig.baseUrl}/appointments/"),
+      headers: {
+        "Authorization": "Bearer $token",
+        "Content-Type": "application/json",
+      },
+    );
+
+    debugPrint("REPONSE TOUS LES RDV ADMIN : ${response.body}");
+
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body);
+    } else {
+      throw Exception(
+        "Erreur récupération des rendez-vous : ${response.body}",
+      );
+    }
+  }
+  // Récupérer les statistiques générales - Administrateur
+  static Future<Map<String, dynamic>> getStatistiques(
+      String token,
+      ) async {
+
+    final response = await http.get(
+      Uri.parse(
+        "${ApiConfig.baseUrl}/users/statistiques",
+      ),
+      headers: {
+        "Authorization": "Bearer $token",
+        "Content-Type": "application/json",
+      },
+    );
+
+    debugPrint(
+      "REPONSE STATISTIQUES ADMIN : ${response.body}",
+    );
+
+    if (response.statusCode == 200) {
+
+      return jsonDecode(response.body);
+
+    } else {
+
+      throw Exception(
+        "Erreur récupération statistiques : ${response.body}",
+      );
+
+    }
+  }
+
 
 // Modifier les informations du profil
   static Future<Map<String, dynamic>> updateProfile(
@@ -513,6 +658,28 @@ class ApiService {
       } catch (_) {}
 
       throw Exception(message);
+    }
+  }
+
+  // Récupérer les notifications de l'automobiliste connecté
+  static Future<List<dynamic>> getNotifications(String token) async {
+
+    final response = await http.get(
+      Uri.parse(ApiConfig.notifications),
+      headers: {
+        "Authorization": "Bearer $token",
+        "Content-Type": "application/json",
+      },
+    );
+
+    debugPrint("REPONSE NOTIFICATIONS : ${response.body}");
+
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body);
+    } else {
+      throw Exception(
+        "Erreur récupération notifications : ${response.body}",
+      );
     }
   }
 }

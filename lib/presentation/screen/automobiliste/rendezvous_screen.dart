@@ -3,8 +3,8 @@ import '../../../metier/services/api_service.dart';
 import '../../../metier/services/storage_service.dart';
 import '../../../metier/models/user_model.dart';
 import 'profil_auto_screen.dart';
-class RendezVousScreen extends StatefulWidget {
 
+class RendezVousScreen extends StatefulWidget {
   final UserModel user;
 
   const RendezVousScreen({
@@ -18,19 +18,36 @@ class RendezVousScreen extends StatefulWidget {
 
 class _RendezVousScreenState extends State<RendezVousScreen> {
 
+  // ============================================================
+  // GARAGISTE
+  // ============================================================
+
   String? garagisteIdSelectionne;
   String? nomGaragisteSelectionne;
 
-  DateTime? dateSelectionnee;
-  String? creneauSelectionne;
-
   List<dynamic> garagistes = [];
-  bool chargement = true;
+  bool chargementGaragistes = false;
+
+  // ============================================================
+  // DATE
+  // ============================================================
+
+  DateTime? dateSelectionnee;
+
+  // ============================================================
+  // CRENEAUX
+  // ============================================================
 
   List<dynamic> creneaux = [];
   bool chargementCreneaux = false;
 
-  List vehicules = [];
+  String? creneauSelectionne;
+
+  // ============================================================
+  // VEHICULES
+  // ============================================================
+
+  List<dynamic> vehicules = [];
   bool chargementVehicules = true;
 
   String? vehiculeSelectionne;
@@ -39,119 +56,179 @@ class _RendezVousScreenState extends State<RendezVousScreen> {
   @override
   void initState() {
     super.initState();
-    chargerGaragistes();
+
+    // On charge uniquement les véhicules au démarrage.
+    // Les garagistes seront chargés après le choix de la date.
     chargerVehicules();
-
   }
 
+  // ============================================================
+  // CHARGER LES GARAGISTES DISPONIBLES POUR UNE DATE
+  // ============================================================
 
-  Future<void> chargerGaragistes() async {
+  Future<void> chargerGaragistesDisponibles() async {
 
-    try {
-
-      final data = await ApiService.getGaragistes();
-
-      setState(() {
-        garagistes = data;
-        chargement = false;
-      });
-
-    } catch(e) {
-
-      debugPrint(e.toString());
-
-      setState(() {
-        chargement = false;
-      });
-
-    }
-
-  }
-
-  Future<void> chargerCreneaux() async {
-
-    if (garagisteIdSelectionne == null ||
-        dateSelectionnee == null) {
+    if (dateSelectionnee == null) {
       return;
     }
 
     try {
 
       setState(() {
-        chargementCreneaux = true;
+        chargementGaragistes = true;
+
+        // Réinitialiser les anciennes sélections
+        garagistes = [];
+        garagisteIdSelectionne = null;
+        nomGaragisteSelectionne = null;
+
+        creneaux = [];
+        creneauSelectionne = null;
       });
 
+      // --------------------------------------------------------
+      // Format YYYY-MM-DD
+      // --------------------------------------------------------
 
-      String date =
+      final String date =
           "${dateSelectionnee!.year}-"
-          "${dateSelectionnee!.month.toString().padLeft(2,'0')}-"
-          "${dateSelectionnee!.day.toString().padLeft(2,'0')}";
+          "${dateSelectionnee!.month.toString().padLeft(2, '0')}-"
+          "${dateSelectionnee!.day.toString().padLeft(2, '0')}";
 
-      debugPrint("Garagiste sélectionné : $garagisteIdSelectionne");
-      debugPrint("Date sélectionnée : $date");
+      // --------------------------------------------------------
+      // Appel du nouveau endpoint
+      // --------------------------------------------------------
 
-      final data = await ApiService.getCreneauxDisponibles(
-        garagisteIdSelectionne!,
-        date,
+      final Map<String, dynamic> data =
+      await ApiService.getGaragistesDisponibles(date);
+
+      if (!mounted) return;
+
+      // --------------------------------------------------------
+      // Récupérer la liste des garagistes
+      // --------------------------------------------------------
+
+      final List<dynamic> liste =
+          (data["garagistes"] as List?) ?? [];
+
+      setState(() {
+
+        garagistes = liste;
+
+        chargementGaragistes = false;
+
+      });
+
+    } catch (e) {
+
+      debugPrint(
+        "Erreur chargement garagistes disponibles : $e",
       );
-      debugPrint("Créneaux reçus : $data");
+
+      if (!mounted) return;
 
       setState(() {
-
-        creneaux = data;
-        chargementCreneaux = false;
-
+        chargementGaragistes = false;
+        garagistes = [];
       });
 
-
-    } catch(e) {
-
-      debugPrint(e.toString());
-
-      setState(() {
-        chargementCreneaux = false;
-      });
-
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            "Erreur récupération des garagistes : $e",
+          ),
+        ),
+      );
     }
-
   }
+
+  // ============================================================
+  // CHOISIR UNE DATE
+  // ============================================================
+
   Future<void> choisirDate() async {
 
-    DateTime? date = await showDatePicker(
+    final DateTime maintenant = DateTime.now();
+
+    final DateTime? date = await showDatePicker(
 
       context: context,
 
-      initialDate: DateTime.now(),
+      initialDate: maintenant,
 
-      firstDate: DateTime.now(),
+      firstDate: maintenant,
 
       lastDate: DateTime(2100),
+
       locale: const Locale('fr', 'FR'),
     );
 
-    if (date != null) {
-
-      setState(() {
-
-        dateSelectionnee = date;
-
-      });
-
-
-      await chargerCreneaux();
-
+    if (date == null) {
+      return;
     }
 
+    setState(() {
 
+      dateSelectionnee = date;
+
+      // Réinitialiser les anciennes sélections
+      garagisteIdSelectionne = null;
+      nomGaragisteSelectionne = null;
+
+      creneaux = [];
+      creneauSelectionne = null;
+
+    });
+
+    // ----------------------------------------------------------
+    // Une fois la date choisie :
+    // rechercher les garagistes disponibles
+    // ----------------------------------------------------------
+
+    await chargerGaragistesDisponibles();
   }
 
-  Future chargerVehicules() async {
+  // ============================================================
+  // CHOISIR UN GARAGISTE
+  // ============================================================
+
+  void choisirGaragiste(
+      Map<String, dynamic> garagiste,
+      ) {
+
+    final List<dynamic> disponibilites =
+        (garagiste["creneauxDisponibles"] as List?) ?? [];
+
+    setState(() {
+
+      garagisteIdSelectionne =
+          garagiste["_id"]?.toString();
+
+      nomGaragisteSelectionne =
+          garagiste["nom"]?.toString();
+
+      // Les créneaux viennent directement du backend
+      creneaux = disponibilites;
+
+      creneauSelectionne = null;
+
+    });
+  }
+
+  // ============================================================
+  // CHARGER LES VEHICULES
+  // ============================================================
+
+  Future<void> chargerVehicules() async {
 
     try {
 
-      final savedToken = await StorageService.getToken();
+      final String? token =
+      await StorageService.getToken();
 
-      if(savedToken == null){
+      if (token == null) {
+
+        if (!mounted) return;
 
         setState(() {
           chargementVehicules = false;
@@ -160,9 +237,10 @@ class _RendezVousScreenState extends State<RendezVousScreen> {
         return;
       }
 
+      final List<dynamic> liste =
+      await ApiService.getMyVehicles(token);
 
-      final liste = await ApiService.getMyVehicles(savedToken);
-
+      if (!mounted) return;
 
       setState(() {
 
@@ -172,26 +250,232 @@ class _RendezVousScreenState extends State<RendezVousScreen> {
 
       });
 
+    } catch (e) {
 
-    } catch(e) {
+      debugPrint(
+        "Erreur chargement véhicules : $e",
+      );
 
-      debugPrint("Erreur chargement véhicules : $e");
-
+      if (!mounted) return;
 
       setState(() {
-
         chargementVehicules = false;
-
       });
+    }
+  }
 
+  // ============================================================
+  // CREER LE RENDEZ-VOUS
+  // ============================================================
+
+  Future<void> confirmerRendezVous() async {
+
+    final messenger =
+    ScaffoldMessenger.of(context);
+
+    // ==========================================================
+    // VERIFICATION DES SELECTIONS
+    // ==========================================================
+
+    if (dateSelectionnee == null) {
+
+      messenger.showSnackBar(
+        const SnackBar(
+          content: Text(
+            "Veuillez choisir une date.",
+          ),
+        ),
+      );
+
+      return;
     }
 
+    if (garagisteIdSelectionne == null) {
+
+      messenger.showSnackBar(
+        const SnackBar(
+          content: Text(
+            "Veuillez choisir un garagiste.",
+          ),
+        ),
+      );
+
+      return;
+    }
+
+    if (creneauSelectionne == null) {
+
+      messenger.showSnackBar(
+        const SnackBar(
+          content: Text(
+            "Veuillez choisir un créneau.",
+          ),
+        ),
+      );
+
+      return;
+    }
+
+    if (vehiculeSelectionne == null) {
+
+      messenger.showSnackBar(
+        const SnackBar(
+          content: Text(
+            "Veuillez choisir un véhicule.",
+          ),
+        ),
+      );
+
+      return;
+    }
+
+    // ==========================================================
+    // RECUPERER LE TOKEN
+    // ==========================================================
+
+    final String? token =
+    await StorageService.getToken();
+
+    if (!mounted) return;
+
+    if (token == null) {
+
+      messenger.showSnackBar(
+        const SnackBar(
+          content: Text(
+            "Utilisateur non connecté.",
+          ),
+        ),
+      );
+
+      return;
+    }
+
+    // ==========================================================
+    // RECUPERER L'ID AUTOMOBILISTE
+    // ==========================================================
+
+    final String? automobilisteId =
+    await StorageService.getUserId();
+
+    if (!mounted) return;
+
+    if (automobilisteId == null) {
+
+      messenger.showSnackBar(
+        const SnackBar(
+          content: Text(
+            "Identifiant utilisateur introuvable.",
+          ),
+        ),
+      );
+
+      return;
+    }
+
+    // ==========================================================
+    // SEPARER LE CRENEAU
+    //
+    // Exemple :
+    // "08:00 - 09:00"
+    // ==========================================================
+
+    final List<String> heures =
+    creneauSelectionne!.split(" - ");
+
+    if (heures.length != 2) {
+
+      messenger.showSnackBar(
+        const SnackBar(
+          content: Text(
+            "Format du créneau incorrect.",
+          ),
+        ),
+      );
+
+      return;
+    }
+
+    // ==========================================================
+    // FORMATER LA DATE
+    // ==========================================================
+
+    final String dateRdv =
+        "${dateSelectionnee!.year}-"
+        "${dateSelectionnee!.month.toString().padLeft(2, '0')}-"
+        "${dateSelectionnee!.day.toString().padLeft(2, '0')}";
+
+    // ==========================================================
+    // DONNEES DU RENDEZ-VOUS
+    // ==========================================================
+
+    final Map<String, dynamic> rdvData = {
+
+      "automobiliste":
+      automobilisteId,
+
+      "garagiste":
+      garagisteIdSelectionne,
+
+      "vehicule":
+      vehiculeSelectionne,
+
+      "date":
+      dateRdv,
+
+      "heureDebut":
+      heures[0],
+
+      "heureFin":
+      heures[1],
+    };
+
+    // ==========================================================
+    // CREATION
+    // ==========================================================
+
+    try {
+
+      final Map<String, dynamic> resultat =
+      await ApiService.creerRdv(
+        rdvData,
+        token,
+      );
+
+      if (!mounted) return;
+
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text(
+            resultat["message"] ??
+                "Rendez-vous créé avec succès.",
+          ),
+        ),
+      );
+
+    } catch (e) {
+
+      if (!mounted) return;
+
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text(
+            "Erreur : $e",
+          ),
+        ),
+      );
+    }
   }
+
+  // ============================================================
+  // INTERFACE
+  // ============================================================
 
   @override
   Widget build(BuildContext context) {
 
     return Scaffold(
+
       appBar: AppBar(
 
         title: const Text(
@@ -203,193 +487,87 @@ class _RendezVousScreenState extends State<RendezVousScreen> {
         actions: [
 
           IconButton(
-            icon: const Icon(Icons.notifications),
+
+            icon: const Icon(
+              Icons.notifications,
+            ),
+
             onPressed: () {
+
               Navigator.pushNamed(
                 context,
                 '/notifications',
               );
+
             },
           ),
 
-
           IconButton(
-            icon: const Icon(Icons.person),
+
+            icon: const Icon(
+              Icons.person,
+            ),
+
             onPressed: () {
 
               Navigator.push(
+
                 context,
+
                 MaterialPageRoute(
-                  builder: (context) => ProfilAutoScreen(
-                    user: widget.user,
-                  ),
+
+                  builder: (context) =>
+                      ProfilAutoScreen(
+                        user: widget.user,
+                      ),
+
                 ),
               );
 
             },
           ),
-
         ],
-
       ),
-
-
 
       body: SingleChildScrollView(
 
         padding: const EdgeInsets.all(20),
 
-
         child: Column(
 
-          crossAxisAlignment: CrossAxisAlignment.start,
-
+          crossAxisAlignment:
+          CrossAxisAlignment.start,
 
           children: [
 
-
-
-            // =========================
-            // ETAPE 1 : GARAGISTE
-            // =========================
-
+            // ==================================================
+            // ETAPE 1 : DATE
+            // ==================================================
 
             const Text(
 
-              "🔵 1. Choisir un garagiste",
+              "🟢 1. Choisir une date",
 
               style: TextStyle(
 
                 fontSize: 22,
 
-                fontWeight: FontWeight.bold,
-
-                color: Colors.blue,
-
-              ),
-
-            ),
-
-
-            const SizedBox(height: 15),
-
-            if (chargement)
-              const Center(
-                child: CircularProgressIndicator(),
-              )
-            else
-              ListView.builder(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                itemCount: garagistes.length,
-                itemBuilder: (context, index) {
-                  final garagiste = garagistes[index];
-                  final disponibilites = garagiste["disponibilites"] as List;
-
-                  return Card(
-                    margin: const EdgeInsets.only(bottom: 15),
-                    child: Padding(
-                      padding: const EdgeInsets.all(15),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-
-                          Text(
-                            garagiste["nom"],
-                            style: const TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          Text(
-                            "Téléphone : ${garagiste["telephone"] ?? "Non renseigné"}",
-                          ),
-
-                          const SizedBox(height: 5),
-
-                          Text(
-                            "Adresse : ${garagiste["adresse"] ?? "Non renseignée"}",
-                          ),
-
-                          const SizedBox(height: 10),
-
-                          if (disponibilites.isEmpty)
-
-                            const Text(
-                              "Aucune disponibilité",
-                              style: TextStyle(color: Colors.red),
-                            )
-
-                          else
-
-                            ...disponibilites.map((d) => ListTile(
-                              title: Text(
-                                "${d["jourDebut"]} - ${d["jourFin"]}",
-                              ),
-                              subtitle: Text(
-                                "${d["heureDebut"]} à ${d["heureFin"]}",
-                              ),
-                              trailing: ElevatedButton(
-                                onPressed: () {
-                                  setState(() {
-                                    garagisteIdSelectionne = garagiste["_id"];
-                                    nomGaragisteSelectionne = garagiste["nom"];
-                                  });
-                                  debugPrint("Garagiste choisi : ${garagiste["_id"]}");
-                                },
-                                child: const Text("Choisir"),
-                              ),
-                            )),
-                        ],
-                      ),
-                    ),
-                  );
-                },
-              ),
-
-
-
-            const Divider(height: 40),
-
-
-
-
-            // =========================
-            // ETAPE 2 : DATE
-            // =========================
-
-
-            const Text(
-
-              "🟢 2. Choisir une date",
-
-              style: TextStyle(
-
-                fontSize: 22,
-
-                fontWeight: FontWeight.bold,
+                fontWeight:
+                FontWeight.bold,
 
                 color: Colors.green,
-
               ),
-
             ),
 
-
-
             const SizedBox(height: 15),
-
-
 
             ElevatedButton.icon(
 
               onPressed: choisirDate,
 
-
               icon: const Icon(
                 Icons.calendar_month,
               ),
-
 
               label: Text(
 
@@ -397,27 +575,178 @@ class _RendezVousScreenState extends State<RendezVousScreen> {
 
                     ? "Choisir une date"
 
-                    :
-
-                "${dateSelectionnee!.day}/"
-                    "${dateSelectionnee!.month}/"
+                    : "${dateSelectionnee!.day.toString().padLeft(2, '0')}/"
+                    "${dateSelectionnee!.month.toString().padLeft(2, '0')}/"
                     "${dateSelectionnee!.year}",
-
               ),
-
             ),
 
+            const SizedBox(height: 20),
 
+            // ==================================================
+            // ETAPE 2 : GARAGISTES DISPONIBLES
+            // ==================================================
+
+            const Text(
+
+              "🔵 2. Choisir un garagiste",
+
+              style: TextStyle(
+
+                fontSize: 22,
+
+                fontWeight:
+                FontWeight.bold,
+
+                color: Colors.blue,
+              ),
+            ),
+
+            const SizedBox(height: 15),
+
+            if (dateSelectionnee == null)
+
+              const Text(
+                "Choisissez d'abord une date.",
+                style: TextStyle(
+                  color: Colors.grey,
+                ),
+              )
+
+            else if (chargementGaragistes)
+
+              const Center(
+                child:
+                CircularProgressIndicator(),
+              )
+
+            else if (garagistes.isEmpty)
+
+                const Text(
+
+                  "Aucun garagiste disponible "
+                      "pour cette date.",
+
+                  style: TextStyle(
+                    color: Colors.red,
+                  ),
+                )
+
+              else
+
+                ListView.builder(
+
+                  shrinkWrap: true,
+
+                  physics:
+                  const NeverScrollableScrollPhysics(),
+
+                  itemCount:
+                  garagistes.length,
+
+                  itemBuilder:
+                      (context, index) {
+
+                    final Map<String, dynamic>
+                    garagiste =
+                    Map<String, dynamic>.from(
+                      garagistes[index],
+                    );
+
+                    final bool selectionne =
+                        garagisteIdSelectionne ==
+                            garagiste["_id"]?.toString();
+
+
+                    return Card(
+
+                      margin:
+                      const EdgeInsets.only(
+                        bottom: 15,
+                      ),
+
+                      child: Padding(
+
+                        padding:
+                        const EdgeInsets.all(15),
+
+                        child: Column(
+
+                          crossAxisAlignment:
+                          CrossAxisAlignment.start,
+
+                          children: [
+
+                            Text(
+
+                              garagiste["nom"] ??
+                                  "Garagiste",
+
+                              style:
+                              const TextStyle(
+
+                                fontSize: 18,
+
+                                fontWeight:
+                                FontWeight.bold,
+                              ),
+                            ),
+
+                            const SizedBox(height: 5),
+
+                            Text(
+
+                              "Téléphone : "
+                                  "${garagiste["telephone"] ?? "Non renseigné"}",
+                            ),
+
+                            const SizedBox(height: 5),
+
+                            Text(
+
+                              "Adresse : "
+                                  "${garagiste["adresse"] ?? "Non renseignée"}",
+                            ),
+
+
+                            const SizedBox(height: 10),
+                            SizedBox(
+
+                              width:
+                              double.infinity,
+
+                              child:
+                              ElevatedButton(
+
+                                onPressed: () {
+
+                                  choisirGaragiste(
+                                    garagiste,
+                                  );
+
+                                },
+
+                                child: Text(
+
+                                  selectionne
+                                      ? "Garagiste sélectionné"
+                                      : "Choisir",
+
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  },
+                ),
 
             const Divider(height: 40),
 
-
-
-
-            // =========================
+            // ==================================================
             // ETAPE 3 : CRENEAU
-            // =========================
-
+            // ==================================================
 
             const Text(
 
@@ -427,85 +756,85 @@ class _RendezVousScreenState extends State<RendezVousScreen> {
 
                 fontSize: 22,
 
-                fontWeight: FontWeight.bold,
+                fontWeight:
+                FontWeight.bold,
 
                 color: Colors.blue,
-
               ),
-
             ),
-
-
 
             const SizedBox(height: 15),
 
-            if (chargementCreneaux)
-
-              const Center(
-                child: CircularProgressIndicator(),
-              )
-
-
-            else if (creneaux.isEmpty)
+            if (garagisteIdSelectionne == null)
 
               const Text(
-                "Aucun créneau disponible",
+                "Choisissez d'abord un garagiste.",
                 style: TextStyle(
-                  color: Colors.red,
+                  color: Colors.grey,
                 ),
               )
 
+            else if (chargementCreneaux)
 
-            else
+              const Center(
+                child:
+                CircularProgressIndicator(),
+              )
 
-              Column(
+            else if (creneaux.isEmpty)
 
-                children: creneaux.map((creneau) {
+                const Text(
 
-                  final heure =
-                      "${creneau["heureDebut"]} - ${creneau["heureFin"]}";
+                  "Aucun créneau disponible.",
 
+                  style: TextStyle(
+                    color: Colors.red,
+                  ),
+                )
 
-                  return Card(
+              else
+                ListView.builder(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  itemCount: creneaux.length,
+                  itemBuilder: (context, index) {
+                    final creneau = creneaux[index];
 
-                    child: ListTile(
+                    final String heure =
+                        "${creneau["heureDebut"]} - "
+                        "${creneau["heureFin"]}";
 
-                      title: Text(
-                        heure,
+                    final bool selectionne =
+                        creneauSelectionne == heure;
+
+                    return Card(
+                      margin: const EdgeInsets.only(
+                        bottom: 10,
                       ),
-
-                      trailing: ElevatedButton(
-
-                        onPressed: () {
-
-                          setState(() {
-
-                            creneauSelectionne = heure;
-
-                          });
-
-                        },
-
-                        child: const Text(
-                          "Choisir",
+                      child: ListTile(
+                        title: Text(heure),
+                        trailing: ElevatedButton(
+                          onPressed: () {
+                            setState(() {
+                              creneauSelectionne = heure;
+                            });
+                          },
+                          child: Text(
+                            selectionne
+                                ? "Sélectionné"
+                                : "Choisir",
+                          ),
                         ),
-
                       ),
-
-                    ),
-
-                  );
-
-                }).toList(),
-
-              ),
-
+                    );
+                  },
+                ),
 
             const Divider(height: 40),
 
-// =========================
-// ETAPE 4 : VEHICULE
-// =========================
+            // ==================================================
+            // ETAPE 4 : VEHICULE
+            // ==================================================
 
             const Text(
 
@@ -515,318 +844,205 @@ class _RendezVousScreenState extends State<RendezVousScreen> {
 
                 fontSize: 22,
 
-                fontWeight: FontWeight.bold,
+                fontWeight:
+                FontWeight.bold,
 
                 color: Colors.purple,
-
               ),
-
             ),
 
-
             const SizedBox(height: 15),
-
 
             if (chargementVehicules)
 
               const Center(
-
-                child: CircularProgressIndicator(),
-
+                child:
+                CircularProgressIndicator(),
               )
-
 
             else if (vehicules.isEmpty)
 
               const Text(
 
-                "Aucun véhicule enregistré",
+                "Aucun véhicule enregistré.",
 
                 style: TextStyle(
-
                   color: Colors.red,
-
                 ),
-
               )
-
 
             else
 
               Column(
 
-                children: vehicules.map((vehicule) {
+                children:
+                vehicules.map((vehicule) {
 
+                  final String id =
+                      vehicule["_id"]?.toString() ??
+                          "";
+
+                  final String nom =
+
+                      "${vehicule["marque"] ?? ""} "
+                      "${vehicule["modele"] ?? ""}";
+
+                  final bool selectionne =
+                      vehiculeSelectionne ==
+                          id;
 
                   return Card(
 
-                    margin: const EdgeInsets.only(bottom: 15),
-
+                    margin:
+                    const EdgeInsets.only(
+                      bottom: 15,
+                    ),
 
                     child: Padding(
 
-                      padding: const EdgeInsets.all(15),
+                      padding:
+                      const EdgeInsets.all(15),
 
-
-                      child: Column(
-
-                        crossAxisAlignment: CrossAxisAlignment.start,
-
+                      child: Row(
 
                         children: [
 
+                          Expanded(
 
-                          Text(
+                            child: Text(
 
-                            "${vehicule["marque"]} ${vehicule["modele"]}",
+                              nom,
 
-                            style: const TextStyle(
+                              style:
+                              const TextStyle(
 
-                              fontSize: 18,
+                                fontSize: 18,
 
-                              fontWeight: FontWeight.bold,
-
+                                fontWeight:
+                                FontWeight.bold,
+                              ),
                             ),
-
                           ),
-
-
-
-                          const SizedBox(height: 8),
-
-
 
                           ElevatedButton(
 
                             onPressed: () {
 
-
                               setState(() {
 
-
                                 vehiculeSelectionne =
-                                vehicule["_id"];
-
+                                    id;
 
                                 nomVehiculeSelectionne =
-                                "${vehicule["marque"]} ${vehicule["modele"]}";
-
+                                    nom;
 
                               });
 
-
                             },
 
+                            child: Text(
 
-                            child: const Text(
-
-                              "Choisir",
+                              selectionne
+                                  ? "Sélectionné"
+                                  : "Choisir",
 
                             ),
-
                           ),
-
-
                         ],
-
                       ),
-
                     ),
-
                   );
 
-
                 }).toList(),
-
               ),
-
 
             const Divider(height: 40),
 
-
-            // =========================
+            // ==================================================
             // ETAPE 5 : CONFIRMATION
-            // =========================
-
+            // ==================================================
 
             const Text(
 
-              "🟢 4. Confirmation du rendez-vous",
+              "🟢 5. Confirmation du rendez-vous",
 
               style: TextStyle(
 
                 fontSize: 22,
 
-                fontWeight: FontWeight.bold,
+                fontWeight:
+                FontWeight.bold,
 
                 color: Colors.green,
-
               ),
-
             ),
-
-
 
             const SizedBox(height: 15),
 
-
-            Text(
-              "Garagiste : ${nomGaragisteSelectionne ?? "Non sélectionné"}",
-            ),
-
-            Text(
-              "Véhicule : ${nomVehiculeSelectionne ?? "Non sélectionné"}",
-            ),
-
             Text(
 
-              "Date : ${
-                  dateSelectionnee == null
-                      ? "Non sélectionnée"
-                      : "${dateSelectionnee!.day}/${dateSelectionnee!.month}/${dateSelectionnee!.year}"
-              }",
-
+              "Garagiste : "
+                  "${nomGaragisteSelectionne ?? "Non sélectionné"}",
             ),
 
-
+            const SizedBox(height: 5),
 
             Text(
-              "Créneau : ${creneauSelectionne ?? "Non sélectionné"}",
+
+              "Véhicule : "
+                  "${nomVehiculeSelectionne ?? "Non sélectionné"}",
             ),
 
+            const SizedBox(height: 5),
 
+            Text(
+
+              "Date : "
+
+                  "${dateSelectionnee == null
+                  ? "Non sélectionnée"
+                  : "${dateSelectionnee!.day.toString().padLeft(2, '0')}/"
+                  "${dateSelectionnee!.month.toString().padLeft(2, '0')}/"
+                  "${dateSelectionnee!.year}"}",
+            ),
+
+            const SizedBox(height: 5),
+
+            Text(
+
+              "Créneau : "
+                  "${creneauSelectionne ?? "Non sélectionné"}",
+            ),
 
             const SizedBox(height: 25),
 
-
+            // ==================================================
+            // BOUTON CONFIRMER
+            // ==================================================
 
             SizedBox(
 
-              width: double.infinity,
+              width:
+              double.infinity,
 
+              child:
+              ElevatedButton.icon(
 
-              child: ElevatedButton.icon(
-
-                onPressed: () async {
-                  final messenger = ScaffoldMessenger.of(context);
-                  if (garagisteIdSelectionne == null ||
-                      dateSelectionnee == null ||
-                      creneauSelectionne == null ||
-                      vehiculeSelectionne == null) {
-
-                    messenger.showSnackBar(
-                      const SnackBar(
-                        content: Text(
-                          "Veuillez choisir le garagiste, la date et le créneau",
-                        ),
-                      ),
-                    );
-
-                    return;
-                  }
-
-
-                  final automobilisteId =
-                  await StorageService.getUserId();
-
-                  if (!mounted) return;
-                  if (automobilisteId == null) {
-                    messenger.showSnackBar(
-
-                      const SnackBar(
-                        content: Text(
-                          "Utilisateur non connecté",
-                        ),
-                      ),
-                    );
-
-                    return;
-                  }
-
-
-                  // Séparer "08:00 - 09:00"
-                  final heures = creneauSelectionne!.split(" - ");
-
-
-                  final rdvData = {
-
-                    "automobiliste": automobilisteId,
-
-                    "garagiste": garagisteIdSelectionne,
-
-                    "vehicule": vehiculeSelectionne,
-
-                    "dateRdv":
-                    "${dateSelectionnee!.year}-"
-                        "${dateSelectionnee!.month.toString().padLeft(2,'0')}-"
-                        "${dateSelectionnee!.day.toString().padLeft(2,'0')}",
-
-                    "heureDebut": heures[0],
-
-                    "heureFin": heures[1],
-
-                  };
-
-
-                  try {
-
-                    final resultat = await ApiService.creerRdv(
-                      rdvData,
-                    );
-
-                    if (!mounted) return;
-
-                    messenger.showSnackBar(
-                      SnackBar(
-                        content: Text(
-                          resultat["message"] ?? "Rendez-vous créé",
-                        ),
-                      ),
-                    );
-
-
-                  } catch(e) {
-
-                    debugPrint(e.toString());
-
-                    if (!mounted) return;
-                    messenger.showSnackBar(
-                      const SnackBar(
-                        content: Text(
-                          "Erreur lors de la création du rendez-vous",
-                        ),
-                      ),
-                    );
-
-                  }
-
-
-
-                },
-
+                onPressed:
+                confirmerRendezVous,
 
                 icon: const Icon(
                   Icons.check_circle,
                 ),
 
-
                 label: const Text(
                   "Confirmer le rendez-vous",
                 ),
-
               ),
-
             ),
-
-
           ],
-
         ),
-
       ),
-
     );
-
   }
-
 }

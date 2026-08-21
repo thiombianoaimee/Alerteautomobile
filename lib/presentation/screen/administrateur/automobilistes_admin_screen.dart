@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
 import '../../../metier/services/api_service.dart';
+import '../../../metier/services/storage_service.dart';
 import '../../../metier/models/user_model.dart';
 import 'profil_admin_screen.dart';
-
+import 'vehicule_admin_screen.dart';
+import 'rdv_admin_screen.dart';
 class AutomobilistesAdminScreen extends StatefulWidget {
   final UserModel user;
+
   const AutomobilistesAdminScreen({
     super.key,
     required this.user,
@@ -20,6 +23,8 @@ class _AutomobilistesAdminScreenState
 
   List<dynamic> automobilistes = [];
   bool isLoading = true;
+  Map<String, int> nombreVehicules = {};
+  Map<String, int> nombreRdv = {};
 
   @override
   void initState() {
@@ -30,12 +35,62 @@ class _AutomobilistesAdminScreenState
   Future<void> chargerAutomobilistes() async {
     try {
       final data = await ApiService.getAutomobilistes();
+      final token = await StorageService.getToken();
+
+
+      if (token == null) {
+        throw Exception("Token introuvable");
+      }
+      final rdvs = await ApiService.getAllAppointments(token);
+
+      Map<String, int> compteurs = {};
+
+      for (final automobiliste in data) {
+        final id = automobiliste["_id"]?.toString();
+
+        if (id != null) {
+          final vehicules =
+          await ApiService.getVehiclesByAutomobiliste(
+            id,
+            token,
+          );
+
+          compteurs[id] = vehicules.length;
+        }
+      }
+
+      // Compteur des rendez-vous
+      Map<String, int> compteursRdv = {};
+
+      for (final rdv in rdvs) {
+        final automobiliste =
+        rdv["automobiliste"];
+
+        if (automobiliste != null &&
+            automobiliste is Map) {
+
+          final id =
+          automobiliste["_id"]?.toString();
+
+          if (id != null) {
+            compteursRdv[id] =
+                (compteursRdv[id] ?? 0) + 1;
+          }
+        }
+      }
       if (!mounted) return;
+
       setState(() {
         automobilistes = data;
+        nombreVehicules = compteurs;
+        nombreRdv= compteursRdv;
         isLoading = false;
       });
+
     } catch (e) {
+
+      if (!mounted) return;
+
       setState(() {
         isLoading = false;
       });
@@ -48,10 +103,63 @@ class _AutomobilistesAdminScreenState
     }
   }
 
+  // Activer ou désactiver un compte
+  Future<void> changerStatut(
+      Map<String, dynamic> automobiliste) async {
+
+    try {
+
+      final token = await StorageService.getToken();
+
+      if (token == null) {
+        throw Exception("Token introuvable");
+      }
+
+      final id = automobiliste["_id"]?.toString();
+
+      if (id == null) {
+        throw Exception(
+          "ID de l'automobiliste introuvable",
+        );
+      }
+
+      await ApiService.toggleUserStatus(
+        id,
+        token,
+      );
+
+      // Recharger la liste après modification
+      await chargerAutomobilistes();
+
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            "Statut du compte modifié avec succès",
+          ),
+        ),
+      );
+
+    } catch (e) {
+
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text("Erreur : $e"),
+        ),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+
     return Scaffold(
+
       appBar: AppBar(
+
         title: const Text("Automobilistes"),
 
         actions: [
@@ -72,9 +180,10 @@ class _AutomobilistesAdminScreenState
               Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (context) => ProfilAdminScreen(
-                    user: widget.user,
-                  ),
+                  builder: (context) =>
+                      ProfilAdminScreen(
+                        user: widget.user,
+                      ),
                 ),
               );
 
@@ -85,74 +194,270 @@ class _AutomobilistesAdminScreenState
       ),
 
       body: isLoading
+
           ? const Center(
         child: CircularProgressIndicator(),
       )
+
           : automobilistes.isEmpty
+
           ? const Center(
         child: Text(
           "Aucun automobiliste trouvé",
-          style: TextStyle(fontSize: 16),
+          style: TextStyle(
+            fontSize: 16,
+          ),
         ),
       )
+
           : ListView.builder(
+
         padding: const EdgeInsets.all(10),
+
         itemCount: automobilistes.length,
+
         itemBuilder: (context, index) {
 
-          final automobiliste = automobilistes[index];
+          final automobiliste =
+          automobilistes[index];
 
           final nom =
-              automobiliste["nom"]?.toString() ?? "Inconnu";
+              automobiliste["nom"]
+                  ?.toString() ??
+                  "Inconnu";
 
           final email =
-              automobiliste["email"]?.toString() ?? "Non renseigné";
+              automobiliste["email"]
+                  ?.toString() ??
+                  "Non renseigné";
 
           final telephone =
-              automobiliste["telephone"]?.toString() ??
+              automobiliste["telephone"]
+                  ?.toString() ??
                   "Non renseigné";
 
           final adresse =
-              automobiliste["adresse"]?.toString() ??
+              automobiliste["adresse"]
+                  ?.toString() ??
                   "Non renseignée";
 
+          final actif =
+              automobiliste["actif"] != false;
+
           return Card(
-            margin: const EdgeInsets.only(bottom: 2),
+
+            margin:
+            const EdgeInsets.only(
+              bottom: 10,
+            ),
+
             child: Padding(
-              padding: const EdgeInsets.symmetric(
-                horizontal: 8,
-                vertical: 8,
-              ),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
+
+              padding:
+              const EdgeInsets.all(12),
+
+              child: Column(
+
+                crossAxisAlignment:
+                CrossAxisAlignment.start,
+
                 children: [
-                  const CircleAvatar(
-                    child: Icon(Icons.person),
+
+                  // Nom + statut
+                  Row(
+
+                    children: [
+
+                      const CircleAvatar(
+                        child: Icon(
+                          Icons.person,
+                        ),
+                      ),
+
+                      const SizedBox(
+                        width: 10,
+                      ),
+
+                      Expanded(
+                        child: Text(
+                          nom,
+                          style:
+                          const TextStyle(
+                            fontWeight:
+                            FontWeight.bold,
+                            fontSize: 16,
+                          ),
+                        ),
+                      ),
+
+                      Container(
+                        padding:
+                        const EdgeInsets
+                            .symmetric(
+                          horizontal: 8,
+                          vertical: 4,
+                        ),
+
+                        decoration: BoxDecoration(
+                          color: actif
+                              ? Colors.green.withValues(alpha: 0.1)
+                              : Colors.red.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+
+                        child: Text(
+                          actif
+                              ? "Actif"
+                              : "Désactivé",
+                          style: TextStyle(
+                            color: actif
+                                ? Colors.green
+                                : Colors.red,
+                            fontWeight:
+                            FontWeight.bold,
+                          ),
+                        ),
+                      ),
+
+                    ],
                   ),
 
-                  const SizedBox(width: 10),
+                  const SizedBox(
+                    height: 10,
+                  ),
 
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          nom,
+                  Text(
+                    "Email : $email",
+                  ),
+
+                  Text(
+                    "Téléphone : $telephone",
+                  ),
+
+                  Text(
+                    "Adresse : $adresse",
+                  ),
+
+                  const SizedBox(
+                    height: 10,
+                  ),
+
+                  // Véhicules et RDV
+                  Row(
+                    children: [
+                      const Icon(
+                        Icons.directions_car,
+                        size: 20,
+                      ),
+
+                      const SizedBox(width: 5),
+
+                      InkWell(
+                        onTap: () {
+                          final id = automobiliste["_id"]?.toString();
+
+                          if (id == null) {
+                            return;
+                          }
+
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => VehiculesAdminScreen(
+                                automobilisteId: id,
+                              ),
+                            ),
+                          );
+                        },
+
+                        child: Text(
+                          "Véhicules : "
+                              "${nombreVehicules[automobiliste["_id"]?.toString()] ?? 0}",
+
                           style: const TextStyle(
+                            color: Colors.blue,
                             fontWeight: FontWeight.bold,
                           ),
                         ),
+                      ),
 
-                        const SizedBox(height: 4),
+                      const SizedBox(width: 25),
 
-                        Text("Email : $email"),
+                      const Icon(
+                        Icons.calendar_month,
+                        size: 20,
+                      ),
 
-                        Text("Téléphone : $telephone"),
+                      const SizedBox(width: 5),
+                      InkWell(
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => RendezVousAdminScreen(
+                                automobilisteId:
+                                automobiliste["_id"]?.toString() ?? "",
+                              ),
+                            ),
+                          );
+                        },
+                        child: Text(
+                          "RDV : "
+                              "${nombreRdv[
+                          automobiliste["_id"]?.toString()
+                          ] ?? 0}",
+                          style: const TextStyle(
+                            color: Colors.blue,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
 
-                        Text("Adresse : $adresse"),
-                      ],
-                    ),
+                    ],
                   ),
+
+                  const SizedBox(
+                    height: 10,
+                  ),
+
+                  // Statut + bouton
+                  Row(
+
+                    mainAxisAlignment:
+                    MainAxisAlignment
+                        .spaceBetween,
+
+                    children: [
+
+                      Text(
+                        actif
+                            ? "Statut : 🟢 Actif"
+                            : "Statut : 🔴 Désactivé",
+                        style:
+                        const TextStyle(
+                          fontWeight:
+                          FontWeight.bold,
+                        ),
+                      ),
+
+                      ElevatedButton(
+
+                        onPressed: () {
+                          changerStatut(
+                            automobiliste,
+                          );
+                        },
+
+                        child: Text(
+                          actif
+                              ? "Désactiver"
+                              : "Activer",
+                        ),
+                      ),
+
+                    ],
+                  ),
+
                 ],
               ),
             ),
