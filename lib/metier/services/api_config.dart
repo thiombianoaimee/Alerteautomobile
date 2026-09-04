@@ -1,10 +1,11 @@
 class ApiConfig {
   // URL de base du backend
-  static const String baseUrl = "http://10.0.2.2:5000/api";
-
+  static const String baseUrl = "http://10.17.21.89:5000/api";
   // Authentification
   static const String login = "$baseUrl/auth/login";
   static const String register = "$baseUrl/auth/register";
+  static const String forgotPassword = "$baseUrl/auth/forgot-password";
+  static const String resetPassword = "$baseUrl/auth/reset-password";
 
   // Véhicules
   static const String vehicles = "$baseUrl/vehicles";
@@ -20,4 +21,7 @@ class ApiConfig {
 
   // Notifications
   static const String notifications = "$baseUrl/notifications";
+
+  // Configuration alertes
+  static const String config = "$baseUrl/alert-settings";
 }

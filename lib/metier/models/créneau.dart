@@ -50,6 +50,13 @@ class _DisponibilitesPageState extends State<DisponibilitesPage> {
   Future<void> choisirHeure(int index, bool debut) async {
     final TimeOfDay? heure = await showTimePicker(
       context: context,
+      initialEntryMode: TimePickerEntryMode.input, // Mode clavier
+      builder: (BuildContext context, Widget? child) {
+        return MediaQuery(
+          data: MediaQuery.of(context).copyWith(alwaysUse24HourFormat: true), // Force 24h
+          child: child!,
+        );
+      },
       initialTime: TimeOfDay.now(),
     );
 

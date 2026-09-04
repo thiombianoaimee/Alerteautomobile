@@ -12,11 +12,31 @@ class _InscriptionScreenState extends State<InscriptionScreen> {
   final TextEditingController _telephoneController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
+  final TextEditingController _confirmPasswordController = TextEditingController();
   final TextEditingController _adresseController = TextEditingController();
 
   String _role = "automobiliste";
   bool _isLoading = false;
+
+  @override
+  void dispose() {
+    _nomController.dispose();
+    _telephoneController.dispose();
+    _emailController.dispose();
+    _passwordController.dispose();
+    _confirmPasswordController.dispose();
+    _adresseController.dispose();
+    super.dispose();
+  }
+
   Future<void> _inscription() async {
+    if (_passwordController.text != _confirmPasswordController.text) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Les mots de passe ne correspondent pas")),
+      );
+      return;
+    }
+
     setState(() {
       _isLoading = true;
     });
@@ -42,20 +62,7 @@ class _InscriptionScreenState extends State<InscriptionScreen> {
         ),
       );
 
-    } catch (e) {
-      debugPrint(e.toString());
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text("Erreur lors de l'inscription"),
-        ),
-      );
-    }
-
-    setState(() {
-      _isLoading = false;
-    });
-  }
+    } catch (e) { debugPrint("Erreur inscription : $e"); if (!mounted) return; String message = e.toString(); if (message.startsWith("Exception: ")) { message = message.substring("Exception: ".length); } ScaffoldMessenger.of(context).showSnackBar( SnackBar( content: Text(message), ), ); } finally { if (mounted) { setState(() { _isLoading = false; }); } } }
 
   @override
   Widget build(BuildContext context) {
@@ -148,7 +155,7 @@ class _InscriptionScreenState extends State<InscriptionScreen> {
 
               // Confirmation mot de passe
               TextField(
-                controller: _passwordController,
+                controller: _confirmPasswordController,
                 obscureText: true,
                 decoration: InputDecoration(
                   labelText: "Confirmer le mot de passe",
@@ -206,15 +213,35 @@ class _InscriptionScreenState extends State<InscriptionScreen> {
 
               SizedBox(
                 width: double.infinity,
-                height: 50,
+                height: 55,
                 child: ElevatedButton(
                   onPressed: _isLoading ? null : _inscription,
-                  child: _isLoading
-                      ? const CircularProgressIndicator(color: Colors.white)
-                      : const Text(
-                    "S'inscrire",
-                    style: TextStyle(fontSize: 18),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.blue.shade700, // Bleu plus foncé pour le contraste
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(15),
+                    ),
+                    elevation: 5,
                   ),
+                  child: _isLoading
+                      ? const SizedBox(
+                          height: 25,
+                          width: 25,
+                          child: CircularProgressIndicator(
+                            color: Colors.white,
+                            strokeWidth: 3,
+                          ),
+                        )
+                      : const Text(
+                          "CRÉER MON COMPTE",
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            letterSpacing: 1.5,
+                            color: Colors.white,
+                          ),
+                        ),
                 ),
               ),
             ],

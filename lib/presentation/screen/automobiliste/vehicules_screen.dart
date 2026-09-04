@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../../metier/services/api_service.dart';
 import '../../../metier/services/storage_service.dart';
 import '../../../metier/models/user_model.dart';
+
 class VehiculesScreen extends StatefulWidget {
 
   final UserModel user;
@@ -68,6 +69,8 @@ class _VehiculesScreenState extends State<VehiculesScreen> {
 
     setState(() {
       dateVisiteTechnique = null;
+      categorie = null;
+      vehiculeEnregistre = false;
     });
   }
 
@@ -141,7 +144,7 @@ class _VehiculesScreenState extends State<VehiculesScreen> {
     return Scaffold(
 
       appBar: AppBar(
-        title: const Text("Enregister son véhucule"),
+        title: const Text("Enregistrer son véhicule"),
         centerTitle: true,
           actions: [
 
@@ -167,265 +170,225 @@ class _VehiculesScreenState extends State<VehiculesScreen> {
       ),
 
 
-      body: Padding(
-
-        padding: const EdgeInsets.all(20),
-
-        child: SingleChildScrollView(
-
-          child: Column(
-
-            children: [
-
-
-              const Icon(
-                Icons.directions_car,
-                size: 80,
-                color: Colors.blue,
-              ),
-
-
-              const SizedBox(height: 20),
-
-
-
-              const Text(
-                "Enregistrer un véhicule",
-                style: TextStyle(
-                  fontSize: 24,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-
-
-
-              const SizedBox(height: 30),
-
-
-
-              TextField(
-
-                controller: immatriculationController,
-
-                decoration: InputDecoration(
-
-                  labelText: "Immatriculation",
-
-                  prefixIcon:
-                  const Icon(Icons.confirmation_number),
-
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(10),
+      body: Container(
+        decoration: BoxDecoration(
+          color: Colors.grey.withValues(alpha: 0.02),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: SingleChildScrollView(
+            child: Column(
+              children: [
+                const SizedBox(height: 10),
+                Container(
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    shape: BoxShape.circle,
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.05),
+                        blurRadius: 10,
+                        offset: const Offset(0, 5),
+                      ),
+                    ],
                   ),
-
-                ),
-
-              ),
-
-
-
-              const SizedBox(height: 15),
-
-
-
-              TextField(
-
-                controller: marqueController,
-
-                decoration: InputDecoration(
-
-                  labelText: "Marque",
-
-                  prefixIcon:
-                  const Icon(Icons.car_repair),
-
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-
-                ),
-
-              ),
-
-
-
-              const SizedBox(height: 15),
-
-
-
-              TextField(
-
-                controller: modeleController,
-
-                decoration: InputDecoration(
-
-                  labelText: "Modèle",
-
-                  prefixIcon:
-                  const Icon(Icons.directions_car),
-
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-
-                ),
-
-              ),
-
-              const SizedBox(height: 15),
-
-              DropdownButtonFormField<String>(
-                initialValue: categorie,
-
-                decoration: InputDecoration(
-                  labelText: "Catégorie du véhicule",
-                  prefixIcon: const Icon(Icons.category),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(10),
+                  child: const Icon(
+                    Icons.directions_car_rounded,
+                    size: 60,
+                    color: Color(0xFF009688),
                   ),
                 ),
-
-                items: const [
-                  DropdownMenuItem(
-                    value: "particulier",
-                    child: Text("Particulier"),
+                const SizedBox(height: 24),
+                const Text(
+                  "Enregistrer un véhicule",
+                  style: TextStyle(
+                    fontSize: 26,
+                    fontWeight: FontWeight.w900,
+                    color: Color(0xFF009688),
+                    letterSpacing: 0.5,
                   ),
-                  DropdownMenuItem(
-                    value: "utilitaire",
-                    child: Text("Utilitaire"),
+                ),
+                const SizedBox(height: 8),
+                const Text(
+                  "Remplissez les informations ci-dessous",
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: Colors.grey,
                   ),
-                  DropdownMenuItem(
-                    value: "transport_personnes",
-                    child: Text("Transport de personnes"),
+                ),
+                const SizedBox(height: 32),
+                _buildModernField(
+                  controller: immatriculationController,
+                  label: "IMMATRICULATION",
+                  icon: Icons.confirmation_number_outlined,
+                ),
+                const SizedBox(height: 16),
+                _buildModernField(
+                  controller: marqueController,
+                  label: "MARQUE",
+                  icon: Icons.car_repair_outlined,
+                ),
+                const SizedBox(height: 16),
+                _buildModernField(
+                  controller: modeleController,
+                  label: "MODÈLE",
+                  icon: Icons.directions_car_outlined,
+                ),
+                const SizedBox(height: 16),
+                DropdownButtonFormField<String>(
+                  initialValue: categorie,
+                  decoration: _inputDecoration(
+                    "CATÉGORIE DU VÉHICULE",
+                    Icons.category_outlined,
                   ),
-                  DropdownMenuItem(
-                    value: "taxi",
-                    child: Text("Taxi"),
+                  items: const [
+                    DropdownMenuItem(value: "particulier", child: Text("Particulier")),
+                    DropdownMenuItem(value: "utilitaire", child: Text("Utilitaire")),
+                    DropdownMenuItem(value: "transport_personnes", child: Text("Transport de personnes")),
+                    DropdownMenuItem(value: "taxi", child: Text("Taxi")),
+                    DropdownMenuItem(value: "auto_ecole", child: Text("Auto-école")),
+                    DropdownMenuItem(value: "tricycle", child: Text("Tricycle")),
+                  ],
+                  onChanged: (value) => setState(() => categorie = value),
+                ),
+                const SizedBox(height: 8),
+                const Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    "DATE DE LA DERNIÈRE VISITE TECHNIQUE",
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w900,
+                      color: Colors.black,
+                      letterSpacing: 1.2,
+                    ),
                   ),
-                  DropdownMenuItem(
-                    value: "auto_ecole",
-                    child: Text("Auto-école"),
+                ),
+                const SizedBox(height: 10),
+                InkWell(
+                  onTap: choisirDate,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF009688).withValues(alpha: 0.05),
+                      borderRadius: BorderRadius.circular(15),
+                      border: Border.all(color: const Color(0xFF009688), width: 1.5),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.calendar_month_rounded, color: Color(0xFF009688)),
+                        const SizedBox(width: 12),
+                        Text(
+                          dateVisiteTechnique == null
+                              ? "Cliquer pour sélectionner une date"
+                              : "${dateVisiteTechnique!.day.toString().padLeft(2, '0')}/${dateVisiteTechnique!.month.toString().padLeft(2, '0')}/${dateVisiteTechnique!.year}",
+                          style: TextStyle(
+                            fontSize: 16,
+                            color: dateVisiteTechnique == null ? Colors.grey : Colors.black,
+                            fontWeight: dateVisiteTechnique == null ? FontWeight.normal : FontWeight.w800,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
-                  DropdownMenuItem(
-                    value: "tricycle",
-                    child: Text("Tricycle"),
+                ),
+                const SizedBox(height: 40),
+                if (!vehiculeEnregistre)
+                  SizedBox(
+                    width: double.infinity,
+                    height: 60,
+                    child: ElevatedButton(
+                      onPressed: enregistrerVehicule,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF009688),
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(15),
+                        ),
+                        elevation: 6,
+                        shadowColor: const Color(0xFF009688).withValues(alpha: 0.4),
+                      ),
+                      child: const Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.check_circle_outline_rounded, size: 28),
+                          SizedBox(width: 12),
+                          Text(
+                            "VALIDER L'ENREGISTREMENT",
+                            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900, letterSpacing: 1),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                if (vehiculeEnregistre) ...[
+                  SizedBox(
+                    width: double.infinity,
+                    height: 60,
+                    child: ElevatedButton(
+                      onPressed: viderFormulaire,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.orange,
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(15),
+                        ),
+                        elevation: 6,
+                        shadowColor: Colors.orange.withValues(alpha: 0.4),
+                      ),
+                      child: const Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.add_circle_outline_rounded, size: 28),
+                          SizedBox(width: 12),
+                          Text(
+                            "AJOUTER UN AUTRE VÉHICULE",
+                            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900, letterSpacing: 1),
+                          ),
+                        ],
+                      ),
+                    ),
                   ),
                 ],
-
-                onChanged: (value) {
-                  setState(() {
-                    categorie = value;
-                  });
-                },
-              ),
-
-
-              const SizedBox(height: 15),
-
-
-
-
-              InkWell(
-
-                onTap: choisirDate,
-
-                child: InputDecorator(
-
-                  decoration: InputDecoration(
-
-                    labelText:
-                    "Date de la dernière visite technique",
-
-                    prefixIcon:
-                    const Icon(Icons.calendar_month),
-
-                    border: OutlineInputBorder(
-                      borderRadius:
-                      BorderRadius.circular(10),
-                    ),
-
-                  ),
-
-
-                  child: Text(
-
-                    dateVisiteTechnique == null
-
-                        ? "Sélectionner une date"
-
-                        : "${dateVisiteTechnique!.day}/"
-                        "${dateVisiteTechnique!.month}/"
-                        "${dateVisiteTechnique!.year}",
-
-                  ),
-
-                ),
-
-              ),
-
-
-
-              const SizedBox(height: 30),
-
-
-
-
-              SizedBox(
-
-                width: double.infinity,
-
-                child: ElevatedButton.icon(
-
-                  onPressed: enregistrerVehicule,
-
-                  icon: const Icon(Icons.save),
-
-                  label: const Text("Enregistrer"),
-
-                ),
-
-              ),
-
-
-
-
-              const SizedBox(height: 15),
-
-
-
-
-              // Le bouton apparaît seulement après l'enregistrement
-
-              if (vehiculeEnregistre)
-
-                SizedBox(
-
-                  width: double.infinity,
-
-                  child: OutlinedButton.icon(
-
-                    onPressed: viderFormulaire,
-
-                    icon: const Icon(Icons.add),
-
-                    label:
-                    const Text("Ajouter un autre véhicule"),
-
-                  ),
-
-                ),
-
-
-            ],
-
+                const SizedBox(height: 20),
+              ],
+            ),
           ),
-
         ),
-
       ),
-
     );
-
   }
 
+  Widget _buildModernField({
+    required TextEditingController controller,
+    required String label,
+    required IconData icon,
+  }) {
+    return TextField(
+      controller: controller,
+      decoration: _inputDecoration(label, icon),
+    );
+  }
+
+  InputDecoration _inputDecoration(String label, IconData icon) {
+    return InputDecoration(
+      labelText: label,
+      labelStyle: const TextStyle(color: Colors.black, fontSize: 14, fontWeight: FontWeight.w800),
+      prefixIcon: Icon(icon, color: const Color(0xFF009688)),
+      filled: true,
+      fillColor: Colors.white,
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(15),
+        borderSide: BorderSide(color: const Color(0xFF009688).withValues(alpha: 0.2)),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(15),
+        borderSide: const BorderSide(color: Color(0xFF009688), width: 2.5),
+      ),
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(15),
+      ),
+    );
+  }
 }

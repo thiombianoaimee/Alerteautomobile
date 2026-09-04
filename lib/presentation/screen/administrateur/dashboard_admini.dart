@@ -6,9 +6,7 @@ import 'profil_admin_screen.dart';
 import 'automobilistes_admin_screen.dart';
 import 'garagistes_admin_screen.dart';
 import 'statistique_admin_screen.dart';
-import 'rendezvous_admin_screen.dart';
-
-
+import 'config_alerte_screen.dart';
 
 class DashboardAdminScreen extends StatelessWidget {
 
@@ -161,262 +159,105 @@ class DashboardAdminScreen extends StatelessWidget {
 
 
             Expanded(
-
-
               child: ListView(
-
-
                 children: [
-
-
-
                   _adminCard(
-
                     context,
-
                     icon: Icons.people,
-
                     title: "Gestion des automobilistes",
-
-                    subtitle:
-                    "Consulter et gérer les comptes utilisateurs",
-
-                    page: AutomobilistesAdminScreen(
-                      user: user,
-                    ),
+                    subtitle: "Consulter et gérer les comptes utilisateurs",
+                    color: Colors.blue,
+                    page: AutomobilistesAdminScreen(user: user),
                   ),
-
-
-
-
                   _adminCard(
-
                     context,
-
                     icon: Icons.build,
-
                     title: "Gestion des garagistes",
-
-                    subtitle:
-                    "Superviser les garages enregistrés",
-
-                    page: GaragistesAdminScreen(
-                      user: user,
-                    ),
+                    subtitle: "Superviser les garages enregistrés",
+                    color: Colors.orange,
+                    page: GaragistesAdminScreen(user: user),
                   ),
-
-
-
-
                   _adminCard(
-
                     context,
-
                     icon: Icons.bar_chart,
-
                     title: "Statistiques",
-
-                    subtitle:
-                    "Analyser les activités de la plateforme",
-
-                    page: SupervisionAdminScreen(
-                      user: user,
-                    ),
+                    subtitle: "Analyser les activités de la plateforme",
+                    color: Colors.green,
+                    page: SupervisionAdminScreen(user: user),
                   ),
-
-
-
-
-
                   _adminCard(
-
                     context,
-
-                    icon: Icons.calendar_month,
-
-                    title: "Gestion des rendez-vous",
-
-                    subtitle:
-                    "Suivre les rendez-vous des utilisateurs",
-
-                    page: RendezVousAdminScreen(
-                      user: user,
-                    ),
+                    icon: Icons.notifications_active,
+                    title: "Configuration des Alertes",
+                    subtitle: "Paramétrer les dates et heures de rappel",
+                    color: Colors.purple,
+                    page: ConfigAlerteScreen(user: user),
                   ),
-
-
-
-
                 ],
-
               ),
-
             ),
-
-
           ],
-
-
         ),
-
-
       ),
-
-
     );
-
-
   }
-
-
-
-
-
 
   Widget _adminCard(
-
-      BuildContext context, {
-
-        required IconData icon,
-
-        required String title,
-
-        required String subtitle,
-
-        required Widget page,
-
-      }) {
-
-
-
+    BuildContext context, {
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required Widget page,
+    required Color color,
+  }) {
     return Card(
-
-
-      elevation: 5,
-
-
+      elevation: 4,
       margin: const EdgeInsets.only(bottom: 18),
-
-
-
       shape: RoundedRectangleBorder(
-
         borderRadius: BorderRadius.circular(15),
-
       ),
-
-
-
-
-
       child: ListTile(
-
-
-        contentPadding: const EdgeInsets.all(15),
-
-
-
-
-        leading: CircleAvatar(
-
-
-          radius: 25,
-
-
+        contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
+        leading: Container(
+          padding: const EdgeInsets.all(10),
+          decoration: BoxDecoration(
+            color: color.withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(12),
+          ),
           child: Icon(
-
             icon,
-
-            size: 28,
-
+            size: 30,
+            color: color,
           ),
-
-
         ),
-
-
-
-
-
         title: Text(
-
-
           title,
-
-
           style: const TextStyle(
-
             fontSize: 17,
-
             fontWeight: FontWeight.bold,
-
           ),
-
-
         ),
-
-
-
-
-
         subtitle: Text(
-
           subtitle,
-
-          style: const TextStyle(
-
+          style: TextStyle(
             fontSize: 14,
-
+            color: Colors.grey[600],
           ),
-
         ),
-
-
-
-
-        trailing: const Icon(
-
+        trailing: Icon(
           Icons.arrow_forward_ios,
-
           size: 18,
-
+          color: color.withValues(alpha: 0.5),
         ),
-
-
-
-
-
         onTap: () {
-
-
           Navigator.push(
-
-
             context,
-
-
             MaterialPageRoute(
-
-
               builder: (context) => page,
-
-
             ),
-
-
           );
-
-
         },
-
-
       ),
-
-
     );
-
-
   }
-
-
 }

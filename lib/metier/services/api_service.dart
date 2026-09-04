@@ -35,7 +35,7 @@ class ApiService {
   }
 
 
-  // Inscription utilisateur
+// Inscription utilisateur
   static Future<Map<String, dynamic>> register(
       Map<String, dynamic> userData) async {
 
@@ -47,15 +47,86 @@ class ApiService {
       body: jsonEncode(userData),
     );
 
+    debugPrint("REPONSE INSCRIPTION : ${response.statusCode}");
+    debugPrint("BODY INSCRIPTION : ${response.body}");
+
     if (response.statusCode == 201 ||
         response.statusCode == 200) {
+
       return jsonDecode(response.body);
+
     } else {
-      throw Exception(
-        "Erreur inscription : ${response.body}",
-      );
+
+      try {
+        final data = jsonDecode(response.body);
+
+        throw Exception(
+          data['message'] ??
+              "Erreur lors de l'inscription",
+        );
+
+      } catch (e) {
+
+        // Si la réponse du serveur n'est pas un JSON valide
+        if (e is Exception) {
+          rethrow;
+        }
+
+        throw Exception(
+          "Erreur lors de l'inscription",
+        );
+      }
     }
   }
+
+
+
+
+  // Demander la réinitialisation du mot de passe
+  static Future<void> requestPasswordReset(String email) async {
+    final response = await http.post(
+      Uri.parse(ApiConfig.forgotPassword),
+      headers: {"Content-Type": "application/json"},
+      body: jsonEncode({"email": email}),
+    );
+
+    if (response.statusCode != 200) {
+      final data = jsonDecode(response.body);
+      throw Exception(data['message'] ?? "Erreur lors de la demande de réinitialisation");
+    }
+  }
+
+// Réinitialiser le mot de passe avec le token présent dans le lien
+  static Future<void> resetPassword(
+      String token,
+      String nouveauMotDePasse) async {
+
+    final response = await http.post(
+      Uri.parse("${ApiConfig.resetPassword}/$token"),
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: jsonEncode({
+        "nouveauMotDePasse": nouveauMotDePasse,
+      }),
+    );
+
+    if (response.statusCode != 200) {
+      try {
+        final data = jsonDecode(response.body);
+
+        throw Exception(
+          data['message'] ??
+              "Erreur lors de la réinitialisation du mot de passe",
+        );
+      } catch (e) {
+        throw Exception(
+          "Erreur lors de la réinitialisation : ${response.body}",
+        );
+      }
+    }
+  }
+
   //enregistrer un véhicule
   static Future<Map<String, dynamic>> addVehicle(
       Map<String, dynamic> vehicleData,
@@ -93,6 +164,41 @@ class ApiService {
       throw Exception(
         "Erreur récupération véhicules : ${response.body}",
       );
+    }
+  }
+
+  // --- CONFIGURATION DES ALERTES ---
+
+  // Récupérer la configuration des alertes
+  static Future<dynamic> getAlertConfigs(String token) async {
+    final response = await http.get(
+      Uri.parse(ApiConfig.config),
+      headers: {
+        "Authorization": "Bearer $token",
+        "Content-Type": "application/json",
+      },
+    );
+
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body);
+    } else {
+      throw Exception("Erreur récupération config alertes");
+    }
+  }
+
+  // Mettre à jour la configuration des alertes
+  static Future<void> updateAlertConfigs(String token, List<Map<String, dynamic>> regles) async {
+    final response = await http.put(
+      Uri.parse(ApiConfig.config),
+      headers: {
+        "Authorization": "Bearer $token",
+        "Content-Type": "application/json",
+      },
+      body: jsonEncode({"regles": regles}),
+    );
+
+    if (response.statusCode != 200 && response.statusCode != 204) {
+      throw Exception("Erreur mise à jour config alertes : ${response.body}");
     }
   }
 
@@ -445,6 +551,39 @@ class ApiService {
       );
     }
   }
+// ======================================================
+// RÉCUPÉRER LES RDV CONFIRMÉS DU GARAGISTE CONNECTÉ
+// ======================================================
+
+  static Future<List<dynamic>> getRendezVousGaragiste(
+      String token,
+      ) async {
+    final response = await http.get(
+      Uri.parse("${ApiConfig.rdv}/mes-rendez-vous"),
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": "Bearer $token",
+      },
+    );
+
+    debugPrint(
+      "Réponse RDV garagiste : ${response.statusCode} ${response.body}",
+    );
+
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body);
+    }
+
+    if (response.statusCode == 401) {
+      throw Exception("Session expirée. Veuillez vous reconnecter.");
+    }
+
+    throw Exception(
+      "Erreur lors du chargement des rendez-vous : "
+          "${response.statusCode}",
+    );
+  }
+
 // Accepter un rendez-vous
   static Future acceptAppointment(
       String token,
@@ -680,6 +819,58 @@ class ApiService {
       throw Exception(
         "Erreur récupération notifications : ${response.body}",
       );
+    }
+  }
+
+  // Marquer toutes les notifications comme lues
+  static Future<void> markNotificationsAsRead(String token) async {
+    final response = await http.patch(
+      Uri.parse("${ApiConfig.notifications}/marquer-toutes-lues"),
+      headers: {
+        "Authorization": "Bearer $token",
+        "Content-Type": "application/json",
+      },
+    );
+
+    if (response.statusCode != 200) {
+      debugPrint("Erreur lors du marquage des notifications : ${response.body}");
+    }
+  }
+
+  // Obtenir le nombre de notifications non lues
+  static Future<int> getUnreadNotificationsCount(String token) async {
+    try {
+      final response = await http.get(
+        Uri.parse("${ApiConfig.notifications}/non-lues/count"),
+        headers: {
+          "Authorization": "Bearer $token",
+          "Content-Type": "application/json",
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        debugPrint("REPONSE COUNT BACKEND : $data");
+
+        if (data is int) return data;
+        if (data is Map) {
+          // On vérifie toutes les clés possibles, y compris "nombre"
+          return data['nombre'] ?? data['count'] ?? data['unreadCount'] ?? 0;
+        }
+      }
+      
+      // En cas de format inconnu ou erreur, calcul manuel via la liste
+      final list = await getNotifications(token);
+      return list.where((n) => n['lu'] == false).length;
+      
+    } catch (e) {
+      debugPrint("Erreur API count, calcul via liste : $e");
+      try {
+        final list = await getNotifications(token);
+        return list.where((n) => n['lu'] == false).length;
+      } catch (_) {
+        return 0;
+      }
     }
   }
 }

@@ -6,16 +6,13 @@ class NotificationsScreen extends StatefulWidget {
   const NotificationsScreen({super.key});
 
   @override
-  State<NotificationsScreen> createState() =>
-      _NotificationsScreenState();
+  State<NotificationsScreen> createState() => _NotificationsScreenState();
 }
 
 class _NotificationsScreenState extends State<NotificationsScreen> {
   List<dynamic> notifications = [];
-
   bool chargement = true;
   String? erreur;
-
   bool afficherNotificationsPrecedentes = false;
 
   @override
@@ -24,39 +21,35 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     chargerNotifications();
   }
 
-  // =====================================================
-  // CHARGER LES NOTIFICATIONS
-  // =====================================================
-
   Future<void> chargerNotifications() async {
     try {
       final token = await StorageService.getToken();
 
       if (token == null || token.isEmpty) {
         if (!mounted) return;
-
         setState(() {
           erreur = "Utilisateur non connecté";
           chargement = false;
         });
-
         return;
       }
 
-      final resultat =
-      await ApiService.getNotifications(token);
+      final resultat = await ApiService.getNotifications(token);
 
       if (!mounted) return;
 
       setState(() {
+        // Affiche toutes les notifications, y compris les alertes de seuil configurées par l'admin
         notifications = resultat;
         chargement = false;
       });
+
+      if (notifications.isNotEmpty) {
+        await ApiService.markNotificationsAsRead(token);
+      }
     } catch (e) {
       debugPrint("ERREUR NOTIFICATIONS : $e");
-
       if (!mounted) return;
-
       setState(() {
         erreur = e.toString();
         chargement = false;
@@ -64,277 +57,98 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     }
   }
 
-  // =====================================================
-  // TEMPS ÉCOULÉ
-  // =====================================================
-
   String tempsEcoule(String? dateString) {
-    if (dateString == null || dateString.isEmpty) {
-      return "";
-    }
-
+    if (dateString == null || dateString.isEmpty) return "";
     final date = DateTime.tryParse(dateString);
-
-    if (date == null) {
-      return "";
-    }
+    if (date == null) return "";
 
     final dateLocale = date.toLocal();
     final maintenant = DateTime.now();
+    final difference = maintenant.difference(dateLocale);
 
-    final difference =
-    maintenant.difference(dateLocale);
-
-    // Sécurité si la date est dans le futur
-    if (difference.isNegative) {
-      return "À l'instant";
-    }
-
-    // =====================================================
-    // MOINS D'UNE MINUTE
-    // =====================================================
-
-    if (difference.inMinutes < 1) {
-      return "À l'instant";
-    }
-
-    // =====================================================
-    // MOINS D'UNE HEURE
-    // =====================================================
-
-    if (difference.inHours < 1) {
-      return "Il y a ${difference.inMinutes} min";
-    }
-
-    // =====================================================
-    // MOINS DE 24 HEURES
-    // =====================================================
-
-    if (difference.inDays < 1) {
-      return "Il y a ${difference.inHours} h";
-    }
-
-    // =====================================================
-    // HIER
-    // =====================================================
+    if (difference.isNegative || difference.inMinutes < 1) return "À l'instant";
+    if (difference.inHours < 1) return "Il y a ${difference.inMinutes} min";
+    if (difference.inDays < 1) return "Il y a ${difference.inHours} h";
 
     if (difference.inDays == 1) {
-      final heure =
-      dateLocale.hour.toString().padLeft(2, '0');
-
-      final minute =
-      dateLocale.minute.toString().padLeft(2, '0');
-
+      final heure = dateLocale.hour.toString().padLeft(2, '0');
+      final minute = dateLocale.minute.toString().padLeft(2, '0');
       return "Hier à $heure:$minute";
     }
 
-    // =====================================================
-    // À PARTIR DE 2 JOURS
-    // DATE COMPLÈTE
-    // =====================================================
-
-    final jour =
-    dateLocale.day.toString().padLeft(2, '0');
-
-    final mois =
-    dateLocale.month.toString().padLeft(2, '0');
-
-    final annee =
-    dateLocale.year.toString();
-
+    final jour = dateLocale.day.toString().padLeft(2, '0');
+    final mois = dateLocale.month.toString().padLeft(2, '0');
+    final annee = dateLocale.year.toString();
     return "$jour/$mois/$annee";
   }
 
-  // =====================================================
-  // NOTIFICATION RÉCENTE
-  // =====================================================
-  //
-  // 0 jour = aujourd'hui
-  // 1 jour = hier
-  //
-  // Donc :
-  // aujourd'hui + hier => notification principale
-  // 2 jours et plus => précédente
-  // =====================================================
+  bool estNotificationRecente(dynamic notification) {
+    final dateString = notification["dateCreation"];
+    if (dateString == null || dateString.toString().isEmpty) return false;
+    final date = DateTime.tryParse(dateString.toString());
+    if (date == null) return false;
 
-  bool estNotificationRecente(
-      dynamic notification) {
-
-    final dateString =
-    notification["dateCreation"];
-
-    if (dateString == null ||
-        dateString.toString().isEmpty) {
-      return false;
-    }
-
-    final date =
-    DateTime.tryParse(dateString.toString());
-
-    if (date == null) {
-      return false;
-    }
-
-    final dateLocale = date.toLocal();
-    final maintenant = DateTime.now();
-
-    final difference =
-    maintenant.difference(dateLocale);
-
-    if (difference.isNegative) {
-      return true;
-    }
-
+    final difference = DateTime.now().difference(date.toLocal());
+    if (difference.isNegative) return true;
     return difference.inDays <= 1;
   }
 
-  // =====================================================
-  // NOTIFICATIONS RÉCENTES
-  // =====================================================
-
   List<dynamic> get notificationsRecentes {
-    return notifications
-        .where(
-          (notification) =>
-          estNotificationRecente(notification),
-    )
-        .toList();
+    return notifications.where((n) => estNotificationRecente(n)).toList();
   }
-
-  // =====================================================
-  // NOTIFICATIONS PRÉCÉDENTES
-  // =====================================================
 
   List<dynamic> get notificationsPrecedentes {
-    return notifications
-        .where(
-          (notification) =>
-      !estNotificationRecente(notification),
-    )
-        .toList();
+    return notifications.where((n) => !estNotificationRecente(n)).toList();
   }
 
-  // =====================================================
-  // CARTE NOTIFICATION
-  // =====================================================
-
-  Widget _construireNotification(
-      dynamic notification) {
-
+  Widget _construireNotification(dynamic notification) {
     return Card(
-      margin: const EdgeInsets.only(
-        bottom: 10,
-      ),
+      margin: const EdgeInsets.only(bottom: 12),
       elevation: 2,
-      shape: RoundedRectangleBorder(
-        borderRadius:
-        BorderRadius.circular(12),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: Padding(
-        padding:
-        const EdgeInsets.all(12),
+        padding: const EdgeInsets.all(12),
         child: Column(
-          crossAxisAlignment:
-          CrossAxisAlignment.start,
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-
-            // =================================================
-            // TITRE
-            // =================================================
-
             Row(
               children: [
-
                 Container(
-                  padding:
-                  const EdgeInsets.all(7),
-                  decoration:
-                  BoxDecoration(
-                    color:
-                    Colors.blue.withValues(
-                      alpha: 0.10,
-                    ),
-                    shape:
-                    BoxShape.circle,
+                  padding: const EdgeInsets.all(7),
+                  decoration: BoxDecoration(
+                    color: Colors.blue.withValues(alpha: 0.10),
+                    shape: BoxShape.circle,
                   ),
-                  child: const Icon(
-                    Icons.notifications,
-                    color: Colors.blue,
-                    size: 20,
-                  ),
+                  child: const Icon(Icons.notifications, color: Colors.blue, size: 20),
                 ),
-
-                const SizedBox(
-                  width: 9,
-                ),
-
+                const SizedBox(width: 9),
                 Expanded(
                   child: Text(
-                    notification["titre"] ??
-                        "Notification",
-                    style:
-                    const TextStyle(
-                      fontSize: 15,
-                      fontWeight:
-                      FontWeight.bold,
-                    ),
+                    notification["titre"] ?? "Notification",
+                    style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
                   ),
                 ),
               ],
             ),
-
-            const SizedBox(
-              height: 10,
-            ),
-
-            // =================================================
-            // MESSAGE + DATE
-            // =================================================
-
+            const SizedBox(height: 10),
             Container(
               width: double.infinity,
-              padding:
-              const EdgeInsets.all(10),
-              decoration:
-              BoxDecoration(
-                color:
-                Colors.grey.withValues(
-                  alpha: 0.06,
-                ),
-                borderRadius:
-                BorderRadius.circular(9),
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: Colors.grey.withValues(alpha: 0.06),
+                borderRadius: BorderRadius.circular(9),
               ),
               child: Column(
-                crossAxisAlignment:
-                CrossAxisAlignment.start,
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-
-                  // MESSAGE
                   Text(
-                    notification["message"] ??
-                        "",
-                    style:
-                    const TextStyle(
-                      fontSize: 13,
-                      height: 1.4,
-                    ),
+                    notification["message"] ?? "",
+                    style: const TextStyle(fontSize: 13, height: 1.4),
                   ),
-
-                  const SizedBox(
-                    height: 8,
-                  ),
-
-                  // TEMPS ÉCOULÉ
+                  const SizedBox(height: 8),
                   Text(
-                    tempsEcoule(
-                      notification[
-                      "dateCreation"],
-                    ),
-                    style:
-                    const TextStyle(
-                      fontSize: 11,
-                      color: Colors.grey,
-                    ),
+                    tempsEcoule(notification["dateCreation"]),
+                    style: const TextStyle(fontSize: 11, color: Colors.grey),
                   ),
                 ],
               ),
@@ -345,120 +159,54 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     );
   }
 
-  // =====================================================
-  // AUCUNE NOTIFICATION
-  // =====================================================
-
   Widget _aucuneNotification() {
     return Center(
       child: Column(
-        mainAxisAlignment:
-        MainAxisAlignment.center,
+        mainAxisAlignment: MainAxisAlignment.center,
         children: [
-
-          const Icon(
-            Icons.notifications_none,
-            color: Colors.blue,
-            size: 70,
-          ),
-
-          const SizedBox(
-            height: 15,
-          ),
-
-          const Text(
-            "Aucune notification",
-            style: TextStyle(
-              fontSize: 19,
-              fontWeight:
-              FontWeight.bold,
-            ),
-          ),
+          const Icon(Icons.notifications_none, color: Colors.blue, size: 70),
+          const SizedBox(height: 15),
+          const Text("Aucune notification",
+              style: TextStyle(fontSize: 19, fontWeight: FontWeight.bold)),
         ],
       ),
     );
   }
 
-  // =====================================================
-  // BUILD
-  // =====================================================
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text(
-          "Notifications",
-        ),
+        title: const Text("Notifications"),
         centerTitle: true,
       ),
       body: _construireContenu(),
     );
   }
 
-  // =====================================================
-  // CONTENU
-  // =====================================================
-
   Widget _construireContenu() {
-
-    // =====================================================
-    // CHARGEMENT
-    // =====================================================
-
-    if (chargement) {
-      return const Center(
-        child:
-        CircularProgressIndicator(),
-      );
-    }
-
-    // =====================================================
-    // ERREUR
-    // =====================================================
+    if (chargement) return const Center(child: CircularProgressIndicator());
 
     if (erreur != null) {
       return Center(
         child: Padding(
-          padding:
-          const EdgeInsets.all(20),
+          padding: const EdgeInsets.all(20),
           child: Column(
-            mainAxisAlignment:
-            MainAxisAlignment.center,
+            mainAxisAlignment: MainAxisAlignment.center,
             children: [
-
-              const Icon(
-                Icons.error_outline,
-                color: Colors.red,
-                size: 55,
-              ),
-
-              const SizedBox(
-                height: 12,
-              ),
-
-              Text(
-                erreur!,
-                textAlign:
-                TextAlign.center,
-              ),
-
-              const SizedBox(
-                height: 18,
-              ),
-
+              const Icon(Icons.error_outline, color: Colors.red, size: 55),
+              const SizedBox(height: 12),
+              Text(erreur!, textAlign: TextAlign.center),
+              const SizedBox(height: 18),
               ElevatedButton(
                 onPressed: () {
                   setState(() {
                     chargement = true;
                     erreur = null;
                   });
-
                   chargerNotifications();
                 },
-                child: const Text(
-                  "Réessayer",
-                ),
+                child: const Text("Réessayer"),
               ),
             ],
           ),
@@ -466,143 +214,61 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       );
     }
 
-    // =====================================================
-    // AUCUNE NOTIFICATION
-    // =====================================================
+    if (notifications.isEmpty) return _aucuneNotification();
 
-    if (notifications.isEmpty) {
-      return _aucuneNotification();
-    }
-
-    // =====================================================
-    // LISTES
-    // =====================================================
-
-    final recentes =
-        notificationsRecentes;
-
-    final precedentes =
-        notificationsPrecedentes;
+    final recentes = notificationsRecentes;
+    final precedentes = notificationsPrecedentes;
 
     return RefreshIndicator(
-      onRefresh:
-      chargerNotifications,
-      child: ListView(
-        physics:
-        const AlwaysScrollableScrollPhysics(),
-        padding:
-        const EdgeInsets.symmetric(
-          horizontal: 10,
-          vertical: 10,
-        ),
-        children: [
-
-          // =================================================
-          // NOTIFICATIONS RÉCENTES
-          // =================================================
-
-          if (recentes.isNotEmpty)
-            ...recentes.map(
-                  (notification) =>
-                  _construireNotification(
-                    notification,
-                  ),
-            ),
-
-          // =================================================
-          // BOUTON PRÉCÉDENTES
-          // =================================================
-          //
-          // Le bouton apparaît UNIQUEMENT si
-          // precedentes.isNotEmpty
-          // =================================================
-
-          if (precedentes.isNotEmpty)
-            Padding(
-              padding:
-              const EdgeInsets.only(
-                top: 5,
-                bottom: 10,
-              ),
-              child: InkWell(
-                borderRadius:
-                BorderRadius.circular(10),
-                onTap: () {
-                  setState(() {
-                    afficherNotificationsPrecedentes =
-                    !afficherNotificationsPrecedentes;
-                  });
-                },
-                child: Container(
-                  padding:
-                  const EdgeInsets.symmetric(
-                    vertical: 14,
-                    horizontal: 15,
-                  ),
-                  decoration:
-                  BoxDecoration(
-                    color:
-                    Colors.blue.withValues(
-                      alpha: 0.08,
+      onRefresh: chargerNotifications,
+      color: Colors.blue,
+      child: Scrollbar(
+        thumbVisibility: true,
+        thickness: 6,
+        radius: const Radius.circular(10),
+        child: ListView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 80), // Plus de padding en bas
+          children: [
+            if (recentes.isNotEmpty)
+              ...recentes.map((n) => _construireNotification(n)),
+            if (precedentes.isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.only(top: 8, bottom: 16),
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(12),
+                  onTap: () => setState(() => afficherNotificationsPrecedentes = !afficherNotificationsPrecedentes),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 15),
+                    decoration: BoxDecoration(
+                      color: Colors.blue.withValues(alpha: 0.08),
+                      borderRadius: BorderRadius.circular(12),
                     ),
-                    borderRadius:
-                    BorderRadius.circular(10),
-                  ),
-                  child: Row(
-                    children: [
-
-                      const Icon(
-                        Icons.history,
-                        color: Colors.blue,
-                      ),
-
-                      const SizedBox(
-                        width: 10,
-                      ),
-
-                      Expanded(
-                        child: Text(
-                          afficherNotificationsPrecedentes
-                              ? "Masquer mes notifications précédentes"
-                              : "Voir mes notifications précédentes",
-                          style:
-                          const TextStyle(
-                            fontSize: 14,
-                            fontWeight:
-                            FontWeight.bold,
-                            color:
-                            Colors.blue,
+                    child: Row(
+                      children: [
+                        const Icon(Icons.history, color: Colors.blue),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            afficherNotificationsPrecedentes
+                                ? "Masquer mes notifications précédentes"
+                                : "Voir mes notifications précédentes",
+                            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.blue),
                           ),
                         ),
-                      ),
-
-                      Icon(
-                        afficherNotificationsPrecedentes
-                            ? Icons
-                            .keyboard_arrow_up
-                            : Icons
-                            .keyboard_arrow_down,
-                        color:
-                        Colors.blue,
-                      ),
-                    ],
+                        Icon(
+                          afficherNotificationsPrecedentes ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down,
+                          color: Colors.blue,
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ),
-            ),
-
-          // =================================================
-          // NOTIFICATIONS PRÉCÉDENTES
-          // =================================================
-
-          if (afficherNotificationsPrecedentes)
-            ...precedentes.map(
-                  (notification) =>
-                  _construireNotification(
-                    notification,
-                  ),
-            ),
-        ],
+            if (afficherNotificationsPrecedentes)
+              ...precedentes.map((n) => _construireNotification(n)),
+          ],
+        ),
       ),
     );
   }

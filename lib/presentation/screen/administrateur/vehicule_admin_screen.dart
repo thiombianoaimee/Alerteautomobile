@@ -149,13 +149,35 @@ class _VehiculesAdminScreenState extends State<VehiculesAdminScreen> {
                     ),
                   ),
 
+                  // Catégorie
+                  Text(
+                    "Catégorie : "
+                        "${vehicle["categorie"] ?? "Non renseignée"}",
+                    style: const TextStyle(
+                      fontSize: 15,
+                    ),
+                  ),
+
+                  const SizedBox(height: 8),
+
+// Dernière visite technique
+                  Text(
+                    "Dernière visite technique : "
+                        "${formaterDate(
+                      vehicle["dateDerniereVisiteTechnique"],
+                    )}",
+                    style: const TextStyle(
+                      fontSize: 15,
+                    ),
+                  ),
+
                   const SizedBox(height: 8),
 
                   // Date visite technique
                   Text(
-                    "Visite technique : "
+                    "Prochaine visite technique : "
                         "${formaterDate(
-                      vehicle["dateVisiteTechnique"],
+                      vehicle["prochaineVisite"],
                     )}",
                     style: const TextStyle(
                       fontSize: 15,

@@ -3,7 +3,6 @@ import '../../../metier/models/user_model.dart';
 import '../automobiliste/modifier_infos_screen.dart';
 import '../../../profil/modifier_email_screen.dart';
 import '../../../profil/modifier_mot_de_passe_screen.dart';
-import '../../../profil/supprimer_son_compte_screen.dart';
 
 class ProfilAdminScreen extends StatefulWidget {
 
@@ -236,26 +235,6 @@ class _ProfilAdminScreenState extends State<ProfilAdminScreen> {
 
 
 
-            _profileOption(
-
-              icon: Icons.delete,
-
-              title: "Supprimer le compte",
-
-              color: Colors.red,
-
-              onTap: () async {
-                await Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => SupprimerCompteScreen(
-                      user: user,
-                    ),
-                  ),
-                );
-              },
-
-            ),
 
 
 

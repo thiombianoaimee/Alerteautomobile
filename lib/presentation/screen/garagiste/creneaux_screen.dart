@@ -56,36 +56,30 @@ class _CreneauxScreenState extends State<CreneauxScreen> {
   }
 
   Future<void> choisirHeure(bool debut) async {
+    TimeOfDay initial = debut ? heureDebut : heureFin;
 
     TimeOfDay? heure = await showTimePicker(
-
       context: context,
-
-      initialTime: debut
-          ? heureDebut
-          : heureFin,
-
+      initialEntryMode: TimePickerEntryMode.dial, // Mode horloge (plus stable et joli)
+      helpText: debut ? "CHOISIR HEURE DE DÉBUT" : "CHOISIR HEURE DE FIN",
+      builder: (BuildContext context, Widget? child) {
+        return MediaQuery(
+          data: MediaQuery.of(context).copyWith(alwaysUse24HourFormat: true),
+          child: child!,
+        );
+      },
+      initialTime: initial,
     );
 
-
     if (heure != null) {
-
       setState(() {
-
         if (debut) {
-
           heureDebut = heure;
-
         } else {
-
           heureFin = heure;
-
         }
-
       });
-
     }
-
   }
 
   void activerModification() {
