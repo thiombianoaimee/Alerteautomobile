@@ -21,6 +21,8 @@ class _LoginScreenState extends State<LoginScreen> {
 
   bool _isLoading = false;
   String? _errorMessage;
+  bool _obscurePassword = true;
+
   void _login() async {
     // Fermer le clavier pour éviter les bugs de transition sur l'émulateur
     FocusScope.of(context).unfocus();
@@ -41,9 +43,7 @@ class _LoginScreenState extends State<LoginScreen> {
       return;
     }
     try {
-
       final response = await ApiService.login(email, password);
-
 
       // Sauvegarde du token JWT
       await StorageService.saveToken(
@@ -93,16 +93,13 @@ class _LoginScreenState extends State<LoginScreen> {
           ),
         );
       }
-
     } catch (e) {
       setState(() {
         _isLoading = false;
-        _errorMessage = "Erreur de connexion";
+        _errorMessage = e.toString().replaceFirst("Exception: ", "");
       });
     }
   }
-
-
 
   @override
   void dispose() {
@@ -146,8 +143,8 @@ class _LoginScreenState extends State<LoginScreen> {
                   Text(
                     "Heureux de vous revoir !",
                     style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                          fontWeight: FontWeight.bold,
-                        ),
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                   const SizedBox(height: 8),
                   Text(
@@ -191,10 +188,21 @@ class _LoginScreenState extends State<LoginScreen> {
                   // Champ mot de passe
                   TextField(
                     controller: _passwordController,
-                    obscureText: true,
-                    decoration: const InputDecoration(
+                    obscureText: _obscurePassword,
+                    decoration: InputDecoration(
                       hintText: "Votre mot de passe",
-                      prefixIcon: Icon(Icons.lock_outline),
+                      prefixIcon: const Icon(Icons.lock_outline),
+                      suffixIcon: IconButton(
+                        icon: Icon(
+                          _obscurePassword ? Icons.visibility_off : Icons.visibility,
+                          color: Colors.grey,
+                        ),
+                        onPressed: () {
+                          setState(() {
+                            _obscurePassword = !_obscurePassword;
+                          });
+                        },
+                      ),
                     ),
                   ),
                   const SizedBox(height: 10),
@@ -226,17 +234,17 @@ class _LoginScreenState extends State<LoginScreen> {
                       onPressed: _isLoading ? null : _login,
                       child: _isLoading
                           ? const SizedBox(
-                              height: 20,
-                              width: 20,
-                              child: CircularProgressIndicator(
-                                color: Colors.white,
-                                strokeWidth: 2,
-                              ),
-                            )
+                        height: 20,
+                        width: 20,
+                        child: CircularProgressIndicator(
+                          color: Colors.white,
+                          strokeWidth: 2,
+                        ),
+                      )
                           : const Text(
-                              "SE CONNECTER",
-                              style: TextStyle(fontWeight: FontWeight.bold),
-                            ),
+                        "SE CONNECTER",
+                        style: TextStyle(fontWeight: FontWeight.bold),
+                      ),
                     ),
                   ),
                   const SizedBox(height: 20),

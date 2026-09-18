@@ -3,6 +3,13 @@ import 'package:http/http.dart' as http;
 import 'api_config.dart';
 import 'package:flutter/foundation.dart';
 
+class AbonnementException implements Exception {
+  final String message;
+  AbonnementException(this.message);
+  @override
+  String toString() => message;
+}
+
 class ApiService {
 
   // Connexion utilisateur
@@ -19,18 +26,28 @@ class ApiService {
         "motDePasse": motDePasse,
       }),
     );
+
+    final data = jsonDecode(response.body);
+
     if (response.statusCode == 200) {
-      final data = jsonDecode(response.body);
-
-      debugPrint(data.toString());
-
       return data;
     }
 
     else {
-      throw Exception(
-        "Erreur connexion : ${response.body}",
-      );
+      final backendMessage = data["message"] ?? "";
+
+      // On traduit le message du backend en message clair pour l'utilisateur
+      String messageAffiche;
+
+      if (backendMessage == "Utilisateur non trouvé") {
+        messageAffiche = "Email incorrect";
+      } else if (backendMessage == "Mot de passe incorrect") {
+        messageAffiche = "Mot de passe incorrect";
+      } else {
+        messageAffiche = backendMessage;
+      }
+
+      throw Exception(messageAffiche);
     }
   }
 
@@ -169,10 +186,11 @@ class ApiService {
 
   // --- CONFIGURATION DES ALERTES ---
 
-  // Récupérer la configuration des alertes
-  static Future<dynamic> getAlertConfigs(String token) async {
+  // Récupérer la configuration des alertes pour un type donné
+// (type = "visite_technique" ou "abonnement")
+  static Future<dynamic> getAlertConfigs(String token, String type) async {
     final response = await http.get(
-      Uri.parse(ApiConfig.config),
+      Uri.parse("${ApiConfig.config}/$type"),
       headers: {
         "Authorization": "Bearer $token",
         "Content-Type": "application/json",
@@ -186,10 +204,11 @@ class ApiService {
     }
   }
 
-  // Mettre à jour la configuration des alertes
-  static Future<void> updateAlertConfigs(String token, List<Map<String, dynamic>> regles) async {
+// Mettre à jour la configuration des alertes pour un type donné
+  static Future<void> updateAlertConfigs(
+      String token, String type, List<Map<String, dynamic>> regles) async {
     final response = await http.put(
-      Uri.parse(ApiConfig.config),
+      Uri.parse("${ApiConfig.config}/$type"),
       headers: {
         "Authorization": "Bearer $token",
         "Content-Type": "application/json",
@@ -474,6 +493,7 @@ class ApiService {
       );
     }
   }
+
 // Créer un rendez-vous
   static Future<Map<String, dynamic>> creerRdv(
       Map<String, dynamic> rdvData,
@@ -490,7 +510,7 @@ class ApiService {
 
       body: jsonEncode(rdvData),
     );
-    
+
     if (response.statusCode == 201 ||
         response.statusCode == 200) {
 
@@ -502,11 +522,27 @@ class ApiService {
 
     } else {
 
-      throw Exception(
-        "Erreur création rendez-vous : ${response.body}",
-      );
+      try {
+        final data = jsonDecode(response.body);
+        final message = data['message'] ?? "Erreur création rendez-vous";
+
+        // Le middleware backend renvoie ces flags quand le blocage
+        // est lié au plan d'abonnement (403)
+        if (response.statusCode == 403 &&
+            (data['abonnementRequis'] == true || data['mettreAJourRequis'] == true)) {
+          throw AbonnementException(message);
+        }
+
+        throw Exception(message);
+      } catch (e) {
+        if (e is AbonnementException || e is Exception) rethrow;
+        throw Exception(
+          "Erreur création rendez-vous : ${response.body}",
+        );
+      }
     }
   }
+
 // Récupérer les rendez-vous de l'automobiliste connecté
   static Future<List<dynamic>> getMesRendezVous(String token) async {
 
@@ -822,6 +858,23 @@ class ApiService {
     }
   }
 
+  // Suspendre / réactiver les notifications de visite technique pour un véhicule
+  static Future<bool> toggleNotificationsVehicule(String token, String vehiculeId) async {
+    final response = await http.patch(
+      Uri.parse("${ApiConfig.baseUrl}/vehicles/$vehiculeId/toggle-notifications"),
+      headers: {
+        "Authorization": "Bearer $token",
+        "Content-Type": "application/json",
+      },
+    );
+
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      return data["notificationsSuspendues"] ?? false;
+    }
+    throw Exception("Erreur lors de la mise à jour des notifications");
+  }
+
   // Marquer toutes les notifications comme lues
   static Future<void> markNotificationsAsRead(String token) async {
     final response = await http.patch(
@@ -872,5 +925,255 @@ class ApiService {
         return 0;
       }
     }
+  }
+
+  // --- SYSTÈME D'ABONNEMENT ---
+
+  // Récupérer tous les plans d'abonnement (Admin — actifs et inactifs)
+  static Future<List<dynamic>> getSubscriptionPlans(String token) async {
+    final response = await http.get(
+      Uri.parse(ApiConfig.subscriptionPlans),
+      headers: {
+        "Authorization": "Bearer $token",
+        "Content-Type": "application/json",
+      },
+    );
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body);
+    }
+    throw Exception("Erreur récupération plans : ${response.body}");
+  }
+
+  // Récupérer uniquement les plans actifs (Automobiliste — écran de choix)
+  static Future<List<dynamic>> getActiveSubscriptionPlans(String token) async {
+    final response = await http.get(
+      Uri.parse(ApiConfig.activeSubscriptionPlans),
+      headers: {
+        "Authorization": "Bearer $token",
+        "Content-Type": "application/json",
+      },
+    );
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body);
+    }
+    throw Exception("Erreur récupération plans actifs : ${response.body}");
+  }
+
+  // Créer un plan (Admin)
+  static Future<void> createSubscriptionPlan(String token, Map<String, dynamic> planData) async {
+    final response = await http.post(
+      Uri.parse(ApiConfig.subscriptionPlans),
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": "Bearer $token",
+      },
+      body: jsonEncode(planData),
+    );
+    if (response.statusCode != 200 && response.statusCode != 201) {
+      throw Exception("Erreur création plan : ${response.body}");
+    }
+  }
+
+  // Modifier un plan existant (Admin)
+  static Future<void> updateSubscriptionPlan(
+      String token, String planId, Map<String, dynamic> planData) async {
+    final response = await http.put(
+      Uri.parse("${ApiConfig.subscriptionPlans}/$planId"),
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": "Bearer $token",
+      },
+      body: jsonEncode(planData),
+    );
+    if (response.statusCode != 200) {
+      throw Exception("Erreur modification plan : ${response.body}");
+    }
+  }
+  // Récupérer la liste des fonctionnalités auxquelles j'ai accès
+  static Future<List<String>> getMesFonctionnalites(String token) async {
+    final response = await http.get(
+      Uri.parse("${ApiConfig.baseUrl}/abonnements/mes-fonctionnalites"),
+      headers: {
+        "Authorization": "Bearer $token",
+        "Content-Type": "application/json",
+      },
+    );
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      return List<String>.from(data['fonctionnalites'] ?? []);
+    }
+    throw Exception("Erreur récupération fonctionnalités");
+  }
+
+  // Récupérer la config globale (durée d'essai, etc.) — Admin uniquement
+  static Future<Map<String, dynamic>> getGlobalSubscriptionConfig(String token) async {
+    final response = await http.get(
+      Uri.parse(ApiConfig.subscriptionConfig),
+      headers: {
+        "Authorization": "Bearer $token",
+        "Content-Type": "application/json",
+      },
+    );
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body);
+    }
+    throw Exception("Erreur récupération config globale : ${response.body}");
+  }
+
+  // Mettre à jour la config globale (Admin)
+  static Future<void> updateGlobalSubscriptionConfig(String token, Map<String, dynamic> config) async {
+    final response = await http.put(
+      Uri.parse(ApiConfig.subscriptionConfig),
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": "Bearer $token",
+      },
+      body: jsonEncode(config),
+    );
+    if (response.statusCode != 200) {
+      throw Exception("Erreur mise à jour config : ${response.body}");
+    }
+  }
+
+  // Récupérer les fonctionnalités disponibles (Admin uniquement)
+  static Future<List<dynamic>> getAvailableFeatures(String token) async {
+    final response = await http.get(
+      Uri.parse(ApiConfig.subscriptionFeatures),
+      headers: {
+        "Authorization": "Bearer $token",
+        "Content-Type": "application/json",
+      },
+    );
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body);
+    }
+    throw Exception("Erreur récupération fonctionnalités : ${response.body}");
+  }
+
+  // Vérifier le statut d'abonnement de l'utilisateur connecté
+  static Future<Map<String, dynamic>> getMySubscriptionStatus(String token) async {
+    final response = await http.get(
+      Uri.parse(ApiConfig.mySubscription),
+      headers: {
+        "Authorization": "Bearer $token",
+        "Content-Type": "application/json",
+      },
+    );
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body);
+    }
+    throw Exception("Erreur vérification abonnement : ${response.body}");
+  }
+
+  // Récupérer tous les abonnements (Admin), avec filtre optionnel par statut
+  static Future<List<dynamic>> getAllAbonnements(String token, {String? statut}) async {
+    String url = "${ApiConfig.baseUrl}/abonnements";
+    if (statut != null && statut.isNotEmpty) {
+      url += "?statut=$statut";
+    }
+    final response = await http.get(
+      Uri.parse(url),
+      headers: {
+        "Authorization": "Bearer $token",
+        "Content-Type": "application/json",
+      },
+    );
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body);
+    }
+    throw Exception("Erreur récupération abonnements : ${response.body}");
+  }
+
+  // Récupérer les statistiques des abonnements (Admin)
+  static Future<Map<String, dynamic>> getAbonnementsStatistiques(String token) async {
+    final response = await http.get(
+      Uri.parse("${ApiConfig.baseUrl}/abonnements/statistiques"),
+      headers: {
+        "Authorization": "Bearer $token",
+        "Content-Type": "application/json",
+      },
+    );
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body);
+    }
+    throw Exception("Erreur récupération statistiques abonnements : ${response.body}");
+  }
+
+  // --- PRÉFÉRENCES DE NOTIFICATION ---
+
+  // Récupérer mes préférences actuelles
+  static Future<Map<String, dynamic>> getMesPreferencesNotification(String token) async {
+    final response = await http.get(
+      Uri.parse(ApiConfig.preferencesNotification),
+      headers: {
+        "Authorization": "Bearer $token",
+        "Content-Type": "application/json",
+      },
+    );
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body);
+    }
+    throw Exception("Erreur récupération préférences : ${response.body}");
+  }
+
+  // Récupérer les canaux autorisés selon mon plan actuel
+  static Future<Map<String, dynamic>> getCanauxAutorises(String token) async {
+    final response = await http.get(
+      Uri.parse("${ApiConfig.preferencesNotification}/canaux-autorises"),
+      headers: {
+        "Authorization": "Bearer $token",
+        "Content-Type": "application/json",
+      },
+    );
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body);
+    }
+    throw Exception("Erreur récupération canaux autorisés : ${response.body}");
+  }
+
+  // Modifier mes préférences de notification
+  static Future<Map<String, dynamic>> updatePreferencesNotification(
+      String token, {bool? email, bool? sms}) async {
+    final Map<String, dynamic> body = {};
+    if (email != null) body["email"] = email;
+    if (sms != null) body["sms"] = sms;
+
+    final response = await http.put(
+      Uri.parse(ApiConfig.preferencesNotification),
+      headers: {
+        "Authorization": "Bearer $token",
+        "Content-Type": "application/json",
+      },
+      body: jsonEncode(body),
+    );
+
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body);
+    }
+
+    // On récupère le message d'erreur précis du backend (ex: SMS non autorisé)
+    try {
+      final data = jsonDecode(response.body);
+      throw Exception(data['message'] ?? "Erreur mise à jour préférences");
+    } catch (e) {
+      if (e is Exception) rethrow;
+      throw Exception("Erreur mise à jour préférences : ${response.body}");
+    }
+  }
+
+
+  // Récupérer la recommandation de périodicité selon les véhicules
+  static Future<Map<String, dynamic>> getRecommandationPeriodicite(String token) async {
+    final response = await http.get(
+      Uri.parse(ApiConfig.planRecommandation),
+      headers: {
+        "Authorization": "Bearer $token",
+        "Content-Type": "application/json",
+      },
+    );
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body);
+    }
+    throw Exception("Erreur récupération recommandation : ${response.body}");
   }
 }

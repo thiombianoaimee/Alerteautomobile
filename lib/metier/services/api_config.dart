@@ -1,6 +1,6 @@
 class ApiConfig {
   // URL de base du backend
-  static const String baseUrl = "http://10.17.21.89:5000/api";
+  static const String baseUrl = "http://192.168.1.193:5000/api";
   // Authentification
   static const String login = "$baseUrl/auth/login";
   static const String register = "$baseUrl/auth/register";
@@ -24,4 +24,16 @@ class ApiConfig {
 
   // Configuration alertes
   static const String config = "$baseUrl/alert-settings";
+
+  // Abonnements
+  static const String subscriptionPlans = "$baseUrl/plans";
+  static const String activeSubscriptionPlans = "$baseUrl/plans/actifs";
+  static const String subscriptionConfig = "$baseUrl/configuration-abonnement";
+  static const String subscriptionFeatures = "$baseUrl/fonctionnalites";
+  static const String mySubscription = "$baseUrl/abonnements/mon-abonnement";
+  // Choix de notification selon l'abonnement
+  static const String preferencesNotification = "$baseUrl/preferences-notification";
+// Recommandation des abonnements selon la catégoreie des véhicules
+  static const String planRecommandation = "$baseUrl/plans/recommandation";
+
 }

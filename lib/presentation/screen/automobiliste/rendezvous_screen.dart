@@ -3,6 +3,7 @@ import '../../../metier/services/api_service.dart';
 import '../../../metier/services/storage_service.dart';
 import '../../../metier/models/user_model.dart';
 import 'profil_auto_screen.dart';
+import 'abonnements_screen.dart';
 
 class RendezVousScreen extends StatefulWidget {
   final UserModel user;
@@ -453,9 +454,32 @@ class _RendezVousScreenState extends State<RendezVousScreen> {
         ),
       );
 
-    } catch (e) {
-
+    }   catch (e) {
       if (!mounted) return;
+
+      if (e is AbonnementException) {
+        messenger.showSnackBar(
+          SnackBar(
+            content: Text(e.message),
+            backgroundColor: Colors.orange,
+            duration: const Duration(seconds: 5),
+            action: SnackBarAction(
+              label: "VOIR LES ABONNEMENTS",
+              textColor: Colors.white,
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) =>
+                        SubscriptionsScreen(user: widget.user),
+                  ),
+                );
+              },
+            ),
+          ),
+        );
+        return;
+      }
 
       messenger.showSnackBar(
         SnackBar(

@@ -5,8 +5,17 @@ import '../../../metier/services/storage_service.dart';
 
 class ConfigAlerteScreen extends StatefulWidget {
   final UserModel user;
+  final String type; // "visite_technique" ou "abonnement"
+  final String titre; // titre affiché à l'écran
+  final String description; // description affichée sous le titre
 
-  const ConfigAlerteScreen({super.key, required this.user});
+  const ConfigAlerteScreen({
+    super.key,
+    required this.user,
+    required this.type,
+    required this.titre,
+    required this.description,
+  });
 
   @override
   State<ConfigAlerteScreen> createState() => _ConfigAlerteScreenState();
@@ -23,14 +32,16 @@ class _ConfigAlerteScreenState extends State<ConfigAlerteScreen> {
     super.initState();
     _chargerConfig();
   }
-
   Future<void> _chargerConfig() async {
     try {
       final token = await StorageService.getToken();
-      if (token == null) return;
-      
-      final data = await ApiService.getAlertConfigs(token);
-      
+      if (token == null) {
+        setState(() => chargement = false);
+        return;
+      }
+
+      final data = await ApiService.getAlertConfigs(token, widget.type);
+
       // Le backend renvoie { "regles": [...] }
       if (data is Map && data.containsKey('regles')) {
         final List<dynamic> reglesList = data['regles'];
@@ -47,16 +58,17 @@ class _ConfigAlerteScreenState extends State<ConfigAlerteScreen> {
         throw Exception("Format de données invalide");
       }
     } catch (e) {
-      // Si l'API n'existe pas encore ou erreur, on met des valeurs par défaut pour le dev
+      if (!mounted) return;
       setState(() {
-        alertes = [
-          {"jours": 30, "heure": "09:00", "actif": true},
-          {"jours": 7, "heure": "09:00", "actif": true},
-          {"jours": 3, "heure": "09:00", "actif": true},
-          {"jours": 1, "heure": "18:00", "actif": true},
-        ];
+        alertes = [];
         chargement = false;
       });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text("Erreur chargement configuration : ${e.toString()}"),
+          backgroundColor: Colors.red,
+        ),
+      );
     }
   }
 
@@ -86,7 +98,7 @@ class _ConfigAlerteScreenState extends State<ConfigAlerteScreen> {
           "heure": alerte["heure"],
         }).toList();
 
-        await ApiService.updateAlertConfigs(token, regles);
+        await ApiService.updateAlertConfigs(token, widget.type, regles);
 
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -171,7 +183,7 @@ class _ConfigAlerteScreenState extends State<ConfigAlerteScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text("Configuration Alertes"),
+        title: Text(widget.titre),
         elevation: 0,
       ),
       body: chargement
@@ -182,18 +194,19 @@ class _ConfigAlerteScreenState extends State<ConfigAlerteScreen> {
                   width: double.infinity,
                   padding: const EdgeInsets.all(20),
                   color: Theme.of(context).primaryColor.withValues(alpha: 0.1),
-                  child: const Column(
+                  child: Column(
                     children: [
-                      Icon(Icons.notifications_active, size: 50, color: Colors.blue),
-                      SizedBox(height: 10),
+                      const Icon(Icons.notifications_active, size: 50, color: Colors.blue),
+                      const SizedBox(height: 10),
                       Text(
-                        "Gérer les seuils de rappel",
-                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                        widget.titre,
+                        style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                       ),
+                      const SizedBox(height: 4),
                       Text(
-                        "Définissez quand les automobilistes recevront leurs alertes de visite technique.",
+                        widget.description,
                         textAlign: TextAlign.center,
-                        style: TextStyle(color: Colors.grey),
+                        style: const TextStyle(color: Colors.grey),
                       ),
                     ],
                   ),
@@ -260,7 +273,7 @@ class _ConfigAlerteScreenState extends State<ConfigAlerteScreen> {
                                     padding: const EdgeInsets.all(4),
                                     icon: const Icon(Icons.remove_circle_outline, size: 22),
                                     onPressed: () {
-                                      if (alerte['jours'] > 1) {
+                                      if (alerte['jours'] > 0) {
                                         setState(() => alertes[index]['jours']--);
                                       }
                                     },

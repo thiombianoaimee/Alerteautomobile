@@ -1,12 +1,13 @@
 import 'package:flutter/material.dart';
-
 import '../../../metier/models/user_model.dart';
-
 import 'profil_admin_screen.dart';
 import 'automobilistes_admin_screen.dart';
 import 'garagistes_admin_screen.dart';
 import 'statistique_admin_screen.dart';
 import 'config_alerte_screen.dart';
+import 'gestion_abonnements_screen.dart';
+import 'config_global_screen.dart';
+import 'abonnements_admin_screen.dart';
 
 class DashboardAdminScreen extends StatelessWidget {
 
@@ -164,24 +165,16 @@ class DashboardAdminScreen extends StatelessWidget {
                   _adminCard(
                     context,
                     icon: Icons.people,
-                    title: "Gestion des automobilistes",
-                    subtitle: "Consulter et gérer les comptes utilisateurs",
+                    title: "Comptes Utilisateurs",
+                    subtitle: "Gérer les automobilistes et garagistes",
                     color: Colors.blue,
-                    page: AutomobilistesAdminScreen(user: user),
-                  ),
-                  _adminCard(
-                    context,
-                    icon: Icons.build,
-                    title: "Gestion des garagistes",
-                    subtitle: "Superviser les garages enregistrés",
-                    color: Colors.orange,
-                    page: GaragistesAdminScreen(user: user),
+                    page: AutomobilistesAdminScreen(user: user), // Tu peux alterner ou créer une vue liste simple
                   ),
                   _adminCard(
                     context,
                     icon: Icons.bar_chart,
-                    title: "Statistiques",
-                    subtitle: "Analyser les activités de la plateforme",
+                    title: "Statistiques & Supervision",
+                    subtitle: "Activités, véhicules et abonnements",
                     color: Colors.green,
                     page: SupervisionAdminScreen(user: user),
                   ),
@@ -189,9 +182,65 @@ class DashboardAdminScreen extends StatelessWidget {
                     context,
                     icon: Icons.notifications_active,
                     title: "Configuration des Alertes",
-                    subtitle: "Paramétrer les dates et heures de rappel",
+                    subtitle: "Seuils visite technique et abonnements",
                     color: Colors.purple,
-                    page: ConfigAlerteScreen(user: user),
+                    page: DefaultTabController(
+                      length: 2,
+                      child: Scaffold(
+                        appBar: AppBar(
+                          title: const Text("Seuils d'Alertes"),
+                          bottom: const TabBar(
+                            tabs: [
+                              Tab(text: "Visite Technique"),
+                              Tab(text: "Abonnements"),
+                            ],
+                          ),
+                        ),
+                        body: TabBarView(
+                          children: [
+                            ConfigAlerteScreen(
+                              user: user,
+                              type: "visite_technique",
+                              titre: "Alertes Visite",
+                              description: "Rappels avant expiration de la visite technique.",
+                            ),
+                            ConfigAlerteScreen(
+                              user: user,
+                              type: "abonnement",
+                              titre: "Alertes Abonnement",
+                              description: "Rappels avant expiration de l'abonnement.",
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                  _adminCard(
+                    context,
+                    icon: Icons.settings,
+                    title: "Paramètres Système",
+                    subtitle: "Plans, tarifs et période d'essai",
+                    color: Colors.blueGrey,
+                    page: DefaultTabController(
+                      length: 2,
+                      child: Scaffold(
+                        appBar: AppBar(
+                          title: const Text("Paramètres"),
+                          bottom: const TabBar(
+                            tabs: [
+                              Tab(text: "Plans & Tarifs"),
+                              Tab(text: "Global"),
+                            ],
+                          ),
+                        ),
+                        body: TabBarView(
+                          children: [
+                            GestionAbonnementsScreen(user: user),
+                            ConfigGlobalSubscriptionScreen(user: user),
+                          ],
+                        ),
+                      ),
+                    ),
                   ),
                 ],
               ),

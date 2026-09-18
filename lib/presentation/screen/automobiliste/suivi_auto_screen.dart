@@ -275,68 +275,162 @@ class _SuiviAutomobilisteScreenState
               // ==================================================
               // LISTE DES VEHICULES
               // ==================================================
+          if (afficherVehicules) ...[
+        const SizedBox(height: 20),
 
-              if (afficherVehicules) ...[
-                const SizedBox(height: 20),
+    if (vehicules.isEmpty)
+    const Text(
+    "Aucun véhicule enregistré.",
+    style: TextStyle(
+    color: Colors.grey,
+    ),
+    )
+    else
+    Column(
+    crossAxisAlignment:
+    CrossAxisAlignment.start,
+    children: vehicules.asMap().entries.map((entry) {
+    final index = entry.key;
+    final vehicule = entry.value;
 
-                if (vehicules.isEmpty)
-                  const Text(
-                    "Aucun véhicule enregistré.",
-                    style: TextStyle(
-                      color: Colors.grey,
-                    ),
-                  )
-                else
-                  Column(
-                    crossAxisAlignment:
-                    CrossAxisAlignment.start,
-                    children: vehicules.map((vehicule) {
-                      return Padding(
-                        padding: const EdgeInsets.only(
-                          bottom: 20,
-                        ),
+    final bool suspendu =
+    vehicule["notificationsSuspendues"] == true;
 
-                        child: Column(
-                          crossAxisAlignment:
-                          CrossAxisAlignment.start,
-                          children: [
+    return Padding(
+    padding: const EdgeInsets.only(
+    bottom: 20,
+    ),
 
-                            Text(
-                              "${vehicule["marque"] ?? ""} "
-                                  "${vehicule["modele"] ?? ""}",
-                              style: const TextStyle(
-                                fontSize: 17,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
+    child: Column(
+    crossAxisAlignment:
+    CrossAxisAlignment.start,
+    children: [
 
-                            const SizedBox(height: 8),
+    Text(
+    "${vehicule["marque"] ?? ""} "
+    "${vehicule["modele"] ?? ""}",
+    style: const TextStyle(
+    fontSize: 17,
+    fontWeight: FontWeight.bold,
+    ),
+    ),
 
-                            Text(
-                              "Immatriculation : "
-                                  "${vehicule["immatriculation"] ?? ""}",
-                            ),
+    const SizedBox(height: 8),
 
-                            const SizedBox(height: 5),
+    Text(
+    "Immatriculation : "
+    "${vehicule["immatriculation"] ?? ""}",
+    ),
 
-                            Text(
-                              "Date de la dernière visite technique : "
-                                  "${formaterDate(
-                                vehicule[
-                                "dateDerniereVisiteTechnique"
-                                ]?.toString(),
-                              )}",
-                            ),
+    const SizedBox(height: 5),
 
-                            const Divider(
-                              height: 25,
-                            ),
-                          ],
-                        ),
-                      );
-                    }).toList(),
-                  ),
-              ],
+    Text(
+    "Date de la dernière visite technique : "
+    "${formaterDate(
+    vehicule[
+    "dateDerniereVisiteTechnique"
+    ]?.toString(),
+    )}",
+    ),
+
+    const SizedBox(height: 10),
+
+    // ----------------------------------------
+    // STATUT DES NOTIFICATIONS + BOUTON
+    // ----------------------------------------
+
+    Row(
+    children: [
+    Icon(
+    suspendu
+    ? Icons.notifications_off
+        : Icons.notifications_active,
+    size: 18,
+    color: suspendu ? Colors.grey : Colors.green,
+    ),
+    const SizedBox(width: 8),
+    Expanded(
+    child: Text(
+    suspendu
+    ? "Notifications suspendues pour ce véhicule "
+    "(ex: en panne, immobilisé)."
+        : "Vous recevez les rappels de visite "
+    "technique pour ce véhicule.",
+    style: TextStyle(
+    fontSize: 13,
+    color: suspendu
+    ? Colors.grey[600]
+        : Colors.grey[800],
+    ),
+    ),
+    ),
+    ],
+    ),
+
+    const SizedBox(height: 8),
+
+    SizedBox(
+    width: double.infinity,
+    child: OutlinedButton.icon(
+    onPressed: () async {
+    final token = await StorageService.getToken();
+    if (token == null) return;
+
+    try {
+    final nouveauStatut =
+    await ApiService.toggleNotificationsVehicule(
+    token,
+    vehicule["_id"].toString(),
+    );
+
+    if (!context.mounted) return;
+    setState(() {
+    vehicules[index]["notificationsSuspendues"] =
+    nouveauStatut;
+    });
+
+    ScaffoldMessenger.of(context).showSnackBar(
+    SnackBar(
+    content: Text(
+    nouveauStatut
+    ? "Notifications suspendues."
+        : "Notifications réactivées.",
+    ),
+    backgroundColor:
+    nouveauStatut ? Colors.grey : Colors.green,
+    ),
+    );
+    } catch (e) {
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+    SnackBar(content: Text("Erreur : $e")),
+    );
+    }
+    },
+    icon: Icon(
+    suspendu ? Icons.notifications_active : Icons.notifications_off,
+    size: 18,
+    ),
+    label: Text(
+    suspendu
+    ? "Réactiver les notifications"
+        : "Suspendre les notifications",
+    ),
+    style: OutlinedButton.styleFrom(
+    foregroundColor:
+    suspendu ? Colors.green : Colors.orange,
+    ),
+    ),
+    ),
+
+    const Divider(
+    height: 25,
+    ),
+    ],
+    ),
+    );
+    }).toList(),
+    ),],
 
               const SizedBox(height: 30),
 
@@ -418,7 +512,7 @@ class _SuiviAutomobilisteScreenState
                     const NeverScrollableScrollPhysics(),
                     itemCount: rendezVous.length,
 
-                    itemBuilder: (context, index) {
+                    itemBuilder: (itemContext, index) {
                       final rdv = rendezVous[index];
 
                       // ------------------------------------------

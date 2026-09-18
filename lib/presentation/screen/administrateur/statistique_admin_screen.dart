@@ -18,6 +18,7 @@ class SupervisionAdminScreen extends StatefulWidget {
 
 class _SupervisionAdminScreenState extends State<SupervisionAdminScreen> {
   Map<String, dynamic>? statistiques;
+  Map<String, dynamic>? statsAbonnements;
   bool chargement = true;
   String? erreur;
   final PageController _pageController = PageController();
@@ -26,16 +27,10 @@ class _SupervisionAdminScreenState extends State<SupervisionAdminScreen> {
   @override
   void initState() {
     super.initState();
-    chargerStatistiques();
+    chargerDonnees();
   }
 
-  @override
-  void dispose() {
-    _pageController.dispose();
-    super.dispose();
-  }
-
-  Future<void> chargerStatistiques() async {
+  Future<void> chargerDonnees() async {
     try {
       setState(() {
         chargement = true;
@@ -45,11 +40,17 @@ class _SupervisionAdminScreenState extends State<SupervisionAdminScreen> {
       final token = await StorageService.getToken();
       if (token == null) throw Exception("Token introuvable");
 
-      final data = await ApiService.getStatistiques(token);
+      // On charge les deux types de stats en parallèle
+      final resultats = await Future.wait([
+        ApiService.getStatistiques(token),
+        ApiService.getAbonnementsStatistiques(token),
+      ]);
+
       if (!mounted) return;
 
       setState(() {
-        statistiques = data;
+        statistiques = resultats[0];
+        statsAbonnements = resultats[1];
         chargement = false;
       });
     } catch (e) {
@@ -66,20 +67,11 @@ class _SupervisionAdminScreenState extends State<SupervisionAdminScreen> {
     return Scaffold(
       backgroundColor: Colors.grey[50],
       appBar: AppBar(
-        title: const Text("Supervision"),
+        title: const Text("Supervision Générale"),
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
-            onPressed: chargerStatistiques,
-          ),
-          IconButton(
-            icon: const Icon(Icons.account_circle, size: 30),
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => ProfilAdminScreen(user: widget.user)),
-              );
-            },
+            onPressed: chargerDonnees,
           ),
         ],
       ),
@@ -90,59 +82,59 @@ class _SupervisionAdminScreenState extends State<SupervisionAdminScreen> {
   Widget _construireContenu() {
     if (chargement) return const Center(child: CircularProgressIndicator());
     if (erreur != null) return _buildErrorView();
-    if (statistiques == null) return const Center(child: Text("Aucune statistique disponible"));
+    if (statistiques == null) return const Center(child: Text("Aucune donnée disponible"));
 
     return Column(
       children: [
-        // Indicateur de page en haut
         Container(
-          padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
+          padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 10),
           color: Colors.white,
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              _pageTab("Utilisateurs", 0),
-              _pageTab("Véhicules", 1),
-              _pageTab("Rendez-vous", 2),
-            ],
+          child: SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: [
+                _pageTab("Utilisateurs", 0),
+                const SizedBox(width: 15),
+                _pageTab("Véhicules", 1),
+                const SizedBox(width: 15),
+                _pageTab("Rendez-vous", 2),
+                const SizedBox(width: 15),
+                _pageTab("Abonnements", 3),
+              ],
+            ),
           ),
         ),
         
-        // Corps coulissant horizontalement
         Expanded(
           child: PageView(
             controller: _pageController,
-            onPageChanged: (index) {
-              setState(() => _currentPage = index);
-            },
+            onPageChanged: (index) => setState(() => _currentPage = index),
             children: [
-              _buildCategoryPage(
-                "Utilisateurs",
-                Icons.people,
-                [
-                  _statItem("Automobilistes", statistiques!["utilisateurs"]["automobilistes"], Icons.person, Colors.blue),
-                  _statItem("Garagistes", statistiques!["utilisateurs"]["garagistes"], Icons.build, Colors.orange),
-                  _statItem("Comptes actifs", statistiques!["utilisateurs"]["comptesActifs"], Icons.check_circle, Colors.green),
-                  _statItem("Comptes désactivés", statistiques!["utilisateurs"]["comptesDesactives"], Icons.cancel, Colors.red),
-                ],
-              ),
-              _buildCategoryPage(
-                "Véhicules",
-                Icons.directions_car,
-                [
-                  _statItem("Total véhicules", statistiques!["vehicules"], Icons.directions_car, Colors.blue),
-                ],
-              ),
-              _buildCategoryPage(
-                "Rendez-vous",
-                Icons.calendar_month,
-                [
-                  _statItem("Total", statistiques!["rendezVous"]["total"], Icons.calendar_month, Colors.blue),
-                  _statItem("Confirmés", statistiques!["rendezVous"]["confirmes"], Icons.check_circle, Colors.green),
-                  _statItem("En attente", statistiques!["rendezVous"]["enAttente"], Icons.hourglass_empty, Colors.orange),
-                  _statItem("Annulés", statistiques!["rendezVous"]["annules"], Icons.cancel, Colors.red),
-                ],
-              ),
+              // Onglet 0 : Utilisateurs
+              _buildCategoryPage("Utilisateurs", Icons.people, [
+                _statItem("Automobilistes", statistiques!["utilisateurs"]["automobilistes"], Icons.person, Colors.blue),
+                _statItem("Garagistes", statistiques!["utilisateurs"]["garagistes"], Icons.build, Colors.orange),
+                _statItem("Comptes actifs", statistiques!["utilisateurs"]["comptesActifs"], Icons.check_circle, Colors.green),
+                _statItem("Comptes désactivés", statistiques!["utilisateurs"]["comptesDesactives"], Icons.cancel, Colors.red),
+              ]),
+              // Onglet 1 : Véhicules
+              _buildCategoryPage("Véhicules", Icons.directions_car, [
+                _statItem("Total véhicules", statistiques!["vehicules"], Icons.directions_car, Colors.blue),
+              ]),
+              // Onglet 2 : RDV
+              _buildCategoryPage("Rendez-vous", Icons.calendar_month, [
+                _statItem("Total", statistiques!["rendezVous"]["total"], Icons.calendar_month, Colors.blue),
+                _statItem("Confirmés", statistiques!["rendezVous"]["confirmes"], Icons.check_circle, Colors.green),
+                _statItem("En attente", statistiques!["rendezVous"]["enAttente"], Icons.hourglass_empty, Colors.orange),
+                _statItem("Annulés", statistiques!["rendezVous"]["annules"], Icons.cancel, Colors.red),
+              ]),
+              // Onglet 3 : Abonnements (NOUVEAU)
+              _buildCategoryPage("Abonnements", Icons.card_membership, [
+                _statItem("Total abonnés", statsAbonnements?["total"] ?? 0, Icons.people_alt, Colors.teal),
+                _statItem("Premium", statsAbonnements?["premium"] ?? 0, Icons.star, Colors.orange),
+                _statItem("Basic", statsAbonnements?["basic"] ?? 0, Icons.star_border, Colors.blueGrey),
+                _statItem("En période d'essai", statsAbonnements?["essai"] ?? 0, Icons.timer, Colors.blue),
+              ]),
             ],
           ),
         ),
@@ -238,7 +230,7 @@ class _SupervisionAdminScreenState extends State<SupervisionAdminScreen> {
           const Icon(Icons.error_outline, size: 60, color: Colors.red),
           const SizedBox(height: 15),
           Text(erreur!, textAlign: TextAlign.center),
-          ElevatedButton(onPressed: chargerStatistiques, child: const Text("Réessayer")),
+          ElevatedButton(onPressed: chargerDonnees, child: const Text("Réessayer")),
         ],
       ),
     );
