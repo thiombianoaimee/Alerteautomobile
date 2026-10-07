@@ -2,12 +2,14 @@ import 'package:flutter/material.dart';
 import '../../../metier/models/user_model.dart';
 import '../../../metier/services/api_service.dart';
 import '../../../metier/services/storage_service.dart';
+import 'profil_admin_screen.dart';
 
 class ConfigAlerteScreen extends StatefulWidget {
   final UserModel user;
   final String type; // "visite_technique" ou "abonnement"
   final String titre; // titre affiché à l'écran
   final String description; // description affichée sous le titre
+  final bool showAppBar;
 
   const ConfigAlerteScreen({
     super.key,
@@ -15,6 +17,7 @@ class ConfigAlerteScreen extends StatefulWidget {
     required this.type,
     required this.titre,
     required this.description,
+    this.showAppBar = true,
   });
 
   @override
@@ -181,159 +184,193 @@ class _ConfigAlerteScreenState extends State<ConfigAlerteScreen> {
 
   @override
   Widget build(BuildContext context) {
+    Widget content = chargement
+        ? const Center(child: CircularProgressIndicator())
+        : Column(
+            children: [
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(20),
+                color: Theme.of(context).primaryColor.withValues(alpha: 0.1),
+                child: Column(
+                  children: [
+                    const Icon(Icons.notifications_active, size: 50, color: Colors.blue),
+                    const SizedBox(height: 10),
+                    Text(
+                      widget.titre,
+                      style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      widget.description,
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(color: Colors.grey),
+                    ),
+                  ],
+                ),
+              ),
+              Expanded(
+                child: ListView.builder(
+                  controller: _scrollController,
+                  padding: const EdgeInsets.all(15),
+                  itemCount: alertes.length,
+                  itemBuilder: (context, index) {
+                    final alerte = alertes[index];
+                    return Card(
+                      margin: const EdgeInsets.only(bottom: 12),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
+                        child: Row(
+                          children: [
+                            CircleAvatar(
+                              radius: 20,
+                              backgroundColor: Colors.blue.shade50,
+                              child: Text("${alerte['jours']}", style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Text("Rappel à ${alerte['jours']} j", 
+                                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                                      overflow: TextOverflow.ellipsis),
+                                  GestureDetector(
+                                    onTap: () => _selectTime(index),
+                                    child: FittedBox(
+                                      fit: BoxFit.scaleDown,
+                                      alignment: Alignment.centerLeft,
+                                      child: Row(
+                                        children: [
+                                          const Icon(Icons.access_time, size: 14, color: Colors.grey),
+                                          const SizedBox(width: 4),
+                                          Text(
+                                            "${alerte['heure']}",
+                                            style: const TextStyle(
+                                              color: Colors.green, 
+                                              fontWeight: FontWeight.bold,
+                                              fontSize: 13,
+                                              decoration: TextDecoration.underline
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            // Sélecteur de jours rapide
+                            Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                IconButton(
+                                  constraints: const BoxConstraints(),
+                                  padding: const EdgeInsets.all(4),
+                                  icon: const Icon(Icons.remove_circle_outline, size: 22),
+                                  onPressed: () {
+                                    if (alerte['jours'] > 0) {
+                                      setState(() => alertes[index]['jours']--);
+                                    }
+                                  },
+                                ),
+                                IconButton(
+                                  constraints: const BoxConstraints(),
+                                  padding: const EdgeInsets.all(4),
+                                  icon: const Icon(Icons.add_circle_outline, size: 22),
+                                  onPressed: () {
+                                    setState(() => alertes[index]['jours']++);
+                                  },
+                                ),
+                                IconButton(
+                                  constraints: const BoxConstraints(),
+                                  padding: const EdgeInsets.all(4),
+                                  icon: const Icon(Icons.delete_outline, color: Colors.red, size: 22),
+                                  onPressed: () {
+                                    setState(() => alertes.removeAt(index));
+                                  },
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  children: [
+                    OutlinedButton.icon(
+                      onPressed: _ajouterAlerte,
+                      icon: const Icon(Icons.add),
+                      label: const Text("Ajouter un nouveau seuil"),
+                      style: OutlinedButton.styleFrom(
+                        minimumSize: const Size(double.infinity, 50),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    ElevatedButton(
+                      onPressed: enRegistre ? null : _enregistrer,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.green,
+                        foregroundColor: Colors.white,
+                        minimumSize: const Size(double.infinity, 55),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      ),
+                      child: enRegistre 
+                        ? const CircularProgressIndicator(color: Colors.white)
+                        : const Text("ENREGISTRER LA CONFIGURATION", style: TextStyle(fontWeight: FontWeight.bold)),
+                    ),
+                  ],
+                ),
+              )
+            ],
+          );
+
+    if (!widget.showAppBar) return content;
+
     return Scaffold(
       appBar: AppBar(
         title: Text(widget.titre),
         elevation: 0,
-      ),
-      body: chargement
-          ? const Center(child: CircularProgressIndicator())
-          : Column(
-              children: [
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(20),
-                  color: Theme.of(context).primaryColor.withValues(alpha: 0.1),
-                  child: Column(
-                    children: [
-                      const Icon(Icons.notifications_active, size: 50, color: Colors.blue),
-                      const SizedBox(height: 10),
-                      Text(
-                        widget.titre,
-                        style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        widget.description,
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(color: Colors.grey),
-                      ),
-                    ],
+        actions: [
+          InkWell(
+            borderRadius: BorderRadius.circular(20),
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => ProfilAdminScreen(user: widget.user),
+                ),
+              );
+            },
+            child: Padding(
+              padding: const EdgeInsets.only(right: 15.0, left: 5.0),
+              child: CircleAvatar(
+                radius: 18,
+                backgroundColor: const Color(0xFF00838F),
+                child: Text(
+                  widget.user.nom.trim().isNotEmpty
+                      ? widget.user.nom.trim()[0].toUpperCase()
+                      : 'A',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
                   ),
                 ),
-                Expanded(
-                  child: ListView.builder(
-                    controller: _scrollController,
-                    padding: const EdgeInsets.all(15),
-                    itemCount: alertes.length,
-                    itemBuilder: (context, index) {
-                      final alerte = alertes[index];
-                      return Card(
-                        margin: const EdgeInsets.only(bottom: 12),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
-                          child: Row(
-                            children: [
-                              CircleAvatar(
-                                radius: 20,
-                                backgroundColor: Colors.blue.shade50,
-                                child: Text("${alerte['jours']}", style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
-                              ),
-                              const SizedBox(width: 10),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Text("Rappel à ${alerte['jours']} j", 
-                                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
-                                        overflow: TextOverflow.ellipsis),
-                                    GestureDetector(
-                                      onTap: () => _selectTime(index),
-                                      child: FittedBox(
-                                        fit: BoxFit.scaleDown,
-                                        alignment: Alignment.centerLeft,
-                                        child: Row(
-                                          children: [
-                                            const Icon(Icons.access_time, size: 14, color: Colors.grey),
-                                            const SizedBox(width: 4),
-                                            Text(
-                                              "${alerte['heure']}",
-                                              style: const TextStyle(
-                                                color: Colors.green, 
-                                                fontWeight: FontWeight.bold,
-                                                fontSize: 13,
-                                                decoration: TextDecoration.underline
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              // Sélecteur de jours rapide
-                              Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  IconButton(
-                                    constraints: const BoxConstraints(),
-                                    padding: const EdgeInsets.all(4),
-                                    icon: const Icon(Icons.remove_circle_outline, size: 22),
-                                    onPressed: () {
-                                      if (alerte['jours'] > 0) {
-                                        setState(() => alertes[index]['jours']--);
-                                      }
-                                    },
-                                  ),
-                                  IconButton(
-                                    constraints: const BoxConstraints(),
-                                    padding: const EdgeInsets.all(4),
-                                    icon: const Icon(Icons.add_circle_outline, size: 22),
-                                    onPressed: () {
-                                      setState(() => alertes[index]['jours']++);
-                                    },
-                                  ),
-                                  IconButton(
-                                    constraints: const BoxConstraints(),
-                                    padding: const EdgeInsets.all(4),
-                                    icon: const Icon(Icons.delete_outline, color: Colors.red, size: 22),
-                                    onPressed: () {
-                                      setState(() => alertes.removeAt(index));
-                                    },
-                                  ),
-                                ],
-                              ),
-                            ],
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-                ),
-                Padding(
-                  padding: const EdgeInsets.all(20),
-                  child: Column(
-                    children: [
-                      OutlinedButton.icon(
-                        onPressed: _ajouterAlerte,
-                        icon: const Icon(Icons.add),
-                        label: const Text("Ajouter un nouveau seuil"),
-                        style: OutlinedButton.styleFrom(
-                          minimumSize: const Size(double.infinity, 50),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      ElevatedButton(
-                        onPressed: enRegistre ? null : _enregistrer,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.green,
-                          foregroundColor: Colors.white,
-                          minimumSize: const Size(double.infinity, 55),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                        ),
-                        child: enRegistre 
-                          ? const CircularProgressIndicator(color: Colors.white)
-                          : const Text("ENREGISTRER LA CONFIGURATION", style: TextStyle(fontWeight: FontWeight.bold)),
-                      ),
-                    ],
-                  ),
-                )
-              ],
+              ),
             ),
+          ),
+        ],
+      ),
+      body: content,
     );
   }
 }

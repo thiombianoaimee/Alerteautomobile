@@ -2,14 +2,17 @@ import 'package:flutter/material.dart';
 import '../../../metier/services/api_service.dart';
 import '../../../metier/models/user_model.dart';
 import '../../../metier/services/storage_service.dart';
+import 'profil_admin_screen.dart';
 
 class GestionAbonnementsScreen extends StatefulWidget {
-final UserModel user;
+  final UserModel user;
+  final bool showAppBar;
 
-const GestionAbonnementsScreen({
-super.key,
-required this.user,
-});
+  const GestionAbonnementsScreen({
+    super.key,
+    required this.user,
+    this.showAppBar = true,
+  });
 
 @override
 State<GestionAbonnementsScreen> createState() =>
@@ -278,245 +281,184 @@ color: Colors.white,
 // INTERFACE
 // ==========================================================
 
-@override
-Widget build(BuildContext context) {
-return Scaffold(
-appBar: AppBar(
-title: const Text(
-"Paliers d'Abonnement",
-),
+  @override
+  Widget build(BuildContext context) {
+    Widget content = _isLoading
+        ? const Center(
+            child: CircularProgressIndicator(),
+          )
+        : _plans.isEmpty
+            ? const Center(
+                child: Text(
+                  "Aucun abonnement disponible.",
+                  style: TextStyle(
+                    fontSize: 16,
+                  ),
+                ),
+              )
+            : ListView.builder(
+                padding: const EdgeInsets.all(16),
+                itemCount: _plans.length,
+                itemBuilder: (context, index) {
+                  final plan = _plans[index];
 
-actions: [
-IconButton(
-icon: const Icon(Icons.add),
-onPressed: () => _editPlan(null),
-),
-],
-),
+                  final List fonctionnalites = plan['fonctionnalites'] ?? [];
 
-body: _isLoading
-? const Center(
-child: CircularProgressIndicator(),
-)
-    : _plans.isEmpty
-? const Center(
-child: Text(
-"Aucun abonnement disponible.",
-style: TextStyle(
-fontSize: 16,
-),
-),
-)
-    : ListView.builder(
-padding: const EdgeInsets.all(16),
-itemCount: _plans.length,
+                  final Color color = _colorForOrdre(
+                    plan['ordre'] ?? 0,
+                  );
 
-itemBuilder: (context, index) {
-final plan = _plans[index];
+                  final String periode = (plan['periodeFacturation'] ?? '').toString();
 
-final List fonctionnalites =
-plan['fonctionnalites'] ?? [];
+                  return Card(
+                    margin: const EdgeInsets.only(
+                      bottom: 16,
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(15),
+                    ),
+                    elevation: 4,
+                    child: ExpansionTile(
+                      leading: CircleAvatar(
+                        backgroundColor: color.withValues(
+                          alpha: 0.1,
+                        ),
+                        child: Icon(
+                          Icons.star,
+                          color: color,
+                        ),
+                      ),
+                      title: Text(
+                        plan['nomAffiche'] ?? plan['nom'] ?? '',
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 18,
+                        ),
+                      ),
+                      subtitle: Text(
+                        "${plan['prix']} FCFA ${_labelPeriode(periode)}",
+                        style: TextStyle(
+                          color: color,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      children: [
+                        Padding(
+                          padding: const EdgeInsets.all(
+                            16.0,
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text(
+                                "Fonctionnalités incluses :",
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              const SizedBox(
+                                height: 8,
+                              ),
+                              Wrap(
+                                spacing: 8,
+                                runSpacing: 8,
+                                children: fonctionnalites.map(
+                                  (f) {
+                                    return Chip(
+                                      label: Text(
+                                        (f['nom'] ?? f['cle'] ?? '').toString().toUpperCase(),
+                                        style: const TextStyle(
+                                          fontSize: 10,
+                                        ),
+                                      ),
+                                      backgroundColor: Colors.grey[200],
+                                    );
+                                  },
+                                ).toList(),
+                              ),
+                              const Divider(),
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.end,
+                                children: [
+                                  TextButton.icon(
+                                    onPressed: () => _editPlan(
+                                      plan,
+                                    ),
+                                    icon: const Icon(
+                                      Icons.edit,
+                                    ),
+                                    label: const Text(
+                                      "Modifier",
+                                    ),
+                                  ),
+                                  TextButton.icon(
+                                    onPressed: () {},
+                                    icon: const Icon(
+                                      Icons.delete,
+                                      color: Colors.red,
+                                    ),
+                                    label: const Text(
+                                      "Supprimer",
+                                      style: TextStyle(
+                                        color: Colors.red,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                },
+              );
 
-final Color color =
-_colorForOrdre(
-plan['ordre'] ?? 0,
-);
+    if (!widget.showAppBar) return content;
 
-final String periode =
-(plan['periodeFacturation'] ?? '')
-    .toString();
-
-return Card(
-margin:
-const EdgeInsets.only(
-bottom: 16,
-),
-
-shape:
-RoundedRectangleBorder(
-borderRadius:
-BorderRadius.circular(15),
-),
-
-elevation: 4,
-
-child: ExpansionTile(
-// ==================================================
-// ICÔNE
-// ==================================================
-
-leading: CircleAvatar(
-backgroundColor:
-color.withValues(
-alpha: 0.1,
-),
-
-child: Icon(
-Icons.star,
-color: color,
-),
-),
-
-// ==================================================
-// NOM DU PLAN
-// ==================================================
-
-title: Text(
-plan['nomAffiche'] ??
-plan['nom'] ??
-'',
-
-style:
-const TextStyle(
-fontWeight:
-FontWeight.bold,
-fontSize: 18,
-),
-),
-
-// ==================================================
-// PRIX + PÉRIODE
-// ==================================================
-
-subtitle: Text(
-"${plan['prix']} FCFA ${_labelPeriode(periode)}",
-
-style:
-TextStyle(
-color: color,
-fontWeight:
-FontWeight.bold,
-),
-),
-
-// ==================================================
-// DÉTAILS
-// ==================================================
-
-children: [
-Padding(
-padding:
-const EdgeInsets.all(
-16.0,
-),
-
-child: Column(
-crossAxisAlignment:
-CrossAxisAlignment
-    .start,
-
-children: [
-// ==========================================
-// FONCTIONNALITÉS
-// ==========================================
-
-const Text(
-"Fonctionnalités incluses :",
-
-style:
-TextStyle(
-fontWeight:
-FontWeight.bold,
-),
-),
-
-const SizedBox(
-height: 8,
-),
-
-Wrap(
-spacing: 8,
-
-runSpacing: 8,
-
-children:
-fonctionnalites
-    .map(
-(f) {
-return Chip(
-label: Text(
-(f['nom'] ??
-f['cle'] ??
-'')
-    .toString()
-    .toUpperCase(),
-
-style:
-const TextStyle(
-fontSize: 10,
-),
-),
-
-backgroundColor:
-Colors.grey[
-200],
-);
-},
-).toList(),
-),
-
-const Divider(),
-
-// ==========================================
-// BOUTONS
-// ==========================================
-
-Row(
-mainAxisAlignment:
-MainAxisAlignment
-    .end,
-
-children: [
-// MODIFIER
-TextButton.icon(
-onPressed: () =>
-_editPlan(
-plan,
-),
-
-icon:
-const Icon(
-Icons.edit,
-),
-
-label:
-const Text(
-"Modifier",
-),
-),
-
-// SUPPRIMER
-TextButton.icon(
-onPressed: () {},
-
-icon:
-const Icon(
-Icons.delete,
-color:
-Colors.red,
-),
-
-label:
-const Text(
-"Supprimer",
-style:
-TextStyle(
-color:
-Colors.red,
-),
-),
-),
-],
-),
-],
-),
-),
-],
-),
-);
-},
-),
-);
-}
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text(
+          "Paliers d'Abonnement",
+        ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.add),
+            onPressed: () => _editPlan(null),
+          ),
+          InkWell(
+            borderRadius: BorderRadius.circular(20),
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => ProfilAdminScreen(user: widget.user),
+                ),
+              );
+            },
+            child: Padding(
+              padding: const EdgeInsets.only(right: 15.0, left: 5.0),
+              child: CircleAvatar(
+                radius: 18,
+                backgroundColor: const Color(0xFF00838F),
+                child: Text(
+                  widget.user.nom.trim().isNotEmpty
+                      ? widget.user.nom.trim()[0].toUpperCase()
+                      : 'A',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+      body: content,
+    );
+  }
 }
 

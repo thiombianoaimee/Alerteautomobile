@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../../metier/services/api_service.dart';
 import '../../../metier/models/user_model.dart';
 import '../../../metier/services/storage_service.dart';
+import 'abonnements_admin_screen.dart';
 import 'profil_admin_screen.dart';
 
 class SupervisionAdminScreen extends StatefulWidget {
@@ -18,7 +19,6 @@ class SupervisionAdminScreen extends StatefulWidget {
 
 class _SupervisionAdminScreenState extends State<SupervisionAdminScreen> {
   Map<String, dynamic>? statistiques;
-  Map<String, dynamic>? statsAbonnements;
   bool chargement = true;
   String? erreur;
   final PageController _pageController = PageController();
@@ -40,17 +40,12 @@ class _SupervisionAdminScreenState extends State<SupervisionAdminScreen> {
       final token = await StorageService.getToken();
       if (token == null) throw Exception("Token introuvable");
 
-      // On charge les deux types de stats en parallèle
-      final resultats = await Future.wait([
-        ApiService.getStatistiques(token),
-        ApiService.getAbonnementsStatistiques(token),
-      ]);
+      final result = await ApiService.getStatistiques(token);
 
       if (!mounted) return;
 
       setState(() {
-        statistiques = resultats[0];
-        statsAbonnements = resultats[1];
+        statistiques = result;
         chargement = false;
       });
     } catch (e) {
@@ -72,6 +67,34 @@ class _SupervisionAdminScreenState extends State<SupervisionAdminScreen> {
           IconButton(
             icon: const Icon(Icons.refresh),
             onPressed: chargerDonnees,
+          ),
+          InkWell(
+            borderRadius: BorderRadius.circular(20),
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => ProfilAdminScreen(user: widget.user),
+                ),
+              );
+            },
+            child: Padding(
+              padding: const EdgeInsets.only(right: 15.0, left: 5.0),
+              child: CircleAvatar(
+                radius: 18,
+                backgroundColor: const Color(0xFF00838F),
+                child: Text(
+                  widget.user.nom.trim().isNotEmpty
+                      ? widget.user.nom.trim()[0].toUpperCase()
+                      : 'A',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                  ),
+                ),
+              ),
+            ),
           ),
         ],
       ),
@@ -99,12 +122,12 @@ class _SupervisionAdminScreenState extends State<SupervisionAdminScreen> {
                 const SizedBox(width: 15),
                 _pageTab("Rendez-vous", 2),
                 const SizedBox(width: 15),
-                _pageTab("Abonnements", 3),
+                _pageTab("Suivi des abonnements", 3),
               ],
             ),
           ),
         ),
-        
+
         Expanded(
           child: PageView(
             controller: _pageController,
@@ -128,13 +151,11 @@ class _SupervisionAdminScreenState extends State<SupervisionAdminScreen> {
                 _statItem("En attente", statistiques!["rendezVous"]["enAttente"], Icons.hourglass_empty, Colors.orange),
                 _statItem("Annulés", statistiques!["rendezVous"]["annules"], Icons.cancel, Colors.red),
               ]),
-              // Onglet 3 : Abonnements (NOUVEAU)
-              _buildCategoryPage("Abonnements", Icons.card_membership, [
-                _statItem("Total abonnés", statsAbonnements?["total"] ?? 0, Icons.people_alt, Colors.teal),
-                _statItem("Premium", statsAbonnements?["premium"] ?? 0, Icons.star, Colors.orange),
-                _statItem("Basic", statsAbonnements?["basic"] ?? 0, Icons.star_border, Colors.blueGrey),
-                _statItem("En période d'essai", statsAbonnements?["essai"] ?? 0, Icons.timer, Colors.blue),
-              ]),
+              // Onglet 3 : Suivi des abonnements
+              AbonnementsAdminScreen(
+                user: widget.user,
+                showAppBar: false,
+              ),
             ],
           ),
         ),

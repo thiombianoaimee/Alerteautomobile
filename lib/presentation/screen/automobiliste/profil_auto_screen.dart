@@ -69,24 +69,19 @@ class ProfilAutoScreen extends StatefulWidget {
 
 
 
-            const CircleAvatar(
-
-
+            CircleAvatar(
               radius: 50,
-
-
-              child: Icon(
-
-
-                Icons.person,
-
-
-                size: 55,
-
-
+              backgroundColor: const Color(0xFF00838F),
+              child: Text(
+                user.nom.trim().isNotEmpty
+                    ? user.nom.trim()[0].toUpperCase()
+                    : 'A',
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 48,
+                ),
               ),
-
-
             ),
 
 

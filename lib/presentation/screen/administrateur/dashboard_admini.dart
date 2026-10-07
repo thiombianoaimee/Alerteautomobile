@@ -7,158 +7,81 @@ import 'statistique_admin_screen.dart';
 import 'config_alerte_screen.dart';
 import 'gestion_abonnements_screen.dart';
 import 'config_global_screen.dart';
-import 'abonnements_admin_screen.dart';
 
 class DashboardAdminScreen extends StatelessWidget {
-
   final UserModel user;
-
 
   const DashboardAdminScreen({
     super.key,
     required this.user,
   });
 
-
+  Widget _adminProfileAvatar(BuildContext context, UserModel user) {
+    return InkWell(
+      borderRadius: BorderRadius.circular(20),
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => ProfilAdminScreen(user: user),
+          ),
+        );
+      },
+      child: Padding(
+        padding: const EdgeInsets.only(right: 15.0, left: 5.0),
+        child: CircleAvatar(
+          radius: 18,
+          backgroundColor: const Color(0xFF00838F),
+          child: Text(
+            user.nom.trim().isNotEmpty
+                ? user.nom.trim()[0].toUpperCase()
+                : 'A',
+            style: const TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.bold,
+              fontSize: 16,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
-
-
     return Scaffold(
-
-
       appBar: AppBar(
-
-
         title: const Text(
-
           "Espace Administrateur",
-
           style: TextStyle(
             fontWeight: FontWeight.bold,
           ),
-
         ),
-
-
         centerTitle: true,
-
-
-
         actions: [
-
-
-
-          // Profil administrateur
-          IconButton(
-
-            icon: const Icon(
-              Icons.account_circle,
-              size: 30,
-            ),
-
-
-            tooltip: "Mon profil",
-
-
-            onPressed: () {
-
-
-              Navigator.push(
-
-                context,
-
-                MaterialPageRoute(
-
-                  builder: (context) => ProfilAdminScreen(
-                    user: user,
-                  ),
-
-                ),
-
-              );
-
-
-            },
-
-
-          ),
-
-
-
-
-
+          _adminProfileAvatar(context, user),
         ],
-
       ),
-
-
-
-
       body: Padding(
-
-
         padding: const EdgeInsets.all(20),
-
-
-
         child: Column(
-
-
           crossAxisAlignment: CrossAxisAlignment.start,
-
-
-
           children: [
-
-
-
             Text(
-
               "Bienvenue, ${user.nom}",
-
-
               style: const TextStyle(
-
                 fontSize: 26,
-
                 fontWeight: FontWeight.bold,
-
               ),
-
             ),
-
-
-
-
             const SizedBox(height: 10),
-
-
-
-
             const Text(
-
               "Gestion et supervision de la plateforme.",
-
-
               style: TextStyle(
-
                 fontSize: 16,
-
               ),
-
             ),
-
-
-
-
             const SizedBox(height: 30),
-
-
-
-
-
             Expanded(
               child: ListView(
                 children: [
@@ -166,15 +89,33 @@ class DashboardAdminScreen extends StatelessWidget {
                     context,
                     icon: Icons.people,
                     title: "Comptes Utilisateurs",
-                    subtitle: "Gérer les automobilistes et garagistes",
                     color: Colors.blue,
-                    page: AutomobilistesAdminScreen(user: user), // Tu peux alterner ou créer une vue liste simple
+                    page: DefaultTabController(
+                      length: 2,
+                      child: Scaffold(
+                        appBar: AppBar(
+                          title: const Text("Comptes Utilisateurs"),
+                          actions: [_adminProfileAvatar(context, user)],
+                          bottom: const TabBar(
+                            tabs: [
+                              Tab(text: "Automobilistes"),
+                              Tab(text: "Garagistes"),
+                            ],
+                          ),
+                        ),
+                        body: TabBarView(
+                          children: [
+                            AutomobilistesAdminScreen(user: user, showAppBar: false),
+                            GaragistesAdminScreen(user: user, showAppBar: false),
+                          ],
+                        ),
+                      ),
+                    ),
                   ),
                   _adminCard(
                     context,
                     icon: Icons.bar_chart,
                     title: "Statistiques & Supervision",
-                    subtitle: "Activités, véhicules et abonnements",
                     color: Colors.green,
                     page: SupervisionAdminScreen(user: user),
                   ),
@@ -182,16 +123,17 @@ class DashboardAdminScreen extends StatelessWidget {
                     context,
                     icon: Icons.notifications_active,
                     title: "Configuration des Alertes",
-                    subtitle: "Seuils visite technique et abonnements",
+
                     color: Colors.purple,
                     page: DefaultTabController(
                       length: 2,
                       child: Scaffold(
                         appBar: AppBar(
                           title: const Text("Seuils d'Alertes"),
+                          actions: [_adminProfileAvatar(context, user)],
                           bottom: const TabBar(
                             tabs: [
-                              Tab(text: "Visite Technique"),
+                              Tab(text: "Visite Techinique."),
                               Tab(text: "Abonnements"),
                             ],
                           ),
@@ -203,12 +145,14 @@ class DashboardAdminScreen extends StatelessWidget {
                               type: "visite_technique",
                               titre: "Alertes Visite",
                               description: "Rappels avant expiration de la visite technique.",
+                              showAppBar: false,
                             ),
                             ConfigAlerteScreen(
                               user: user,
                               type: "abonnement",
                               titre: "Alertes Abonnement",
                               description: "Rappels avant expiration de l'abonnement.",
+                              showAppBar: false,
                             ),
                           ],
                         ),
@@ -218,25 +162,26 @@ class DashboardAdminScreen extends StatelessWidget {
                   _adminCard(
                     context,
                     icon: Icons.settings,
-                    title: "Paramètres Système",
-                    subtitle: "Plans, tarifs et période d'essai",
+                    title: "Paramètres des Abonnements",
+
                     color: Colors.blueGrey,
                     page: DefaultTabController(
                       length: 2,
                       child: Scaffold(
                         appBar: AppBar(
-                          title: const Text("Paramètres"),
+                          title: const Text("Paramètres des Abonnements"),
+                          actions: [_adminProfileAvatar(context, user)],
                           bottom: const TabBar(
                             tabs: [
+                              Tab(text: "Période d'essai"),
                               Tab(text: "Plans & Tarifs"),
-                              Tab(text: "Global"),
                             ],
                           ),
                         ),
                         body: TabBarView(
                           children: [
-                            GestionAbonnementsScreen(user: user),
-                            ConfigGlobalSubscriptionScreen(user: user),
+                            ConfigGlobalSubscriptionScreen(user: user, showAppBar: false),
+                            GestionAbonnementsScreen(user: user, showAppBar: false),
                           ],
                         ),
                       ),
@@ -255,7 +200,7 @@ class DashboardAdminScreen extends StatelessWidget {
     BuildContext context, {
     required IconData icon,
     required String title,
-    required String subtitle,
+    String? subtitle,
     required Widget page,
     required Color color,
   }) {
@@ -286,13 +231,15 @@ class DashboardAdminScreen extends StatelessWidget {
             fontWeight: FontWeight.bold,
           ),
         ),
-        subtitle: Text(
-          subtitle,
-          style: TextStyle(
-            fontSize: 14,
-            color: Colors.grey[600],
-          ),
-        ),
+        subtitle: (subtitle != null && subtitle.trim().isNotEmpty)
+            ? Text(
+                subtitle,
+                style: TextStyle(
+                  fontSize: 14,
+                  color: Colors.grey[600],
+                ),
+              )
+            : null,
         trailing: Icon(
           Icons.arrow_forward_ios,
           size: 18,

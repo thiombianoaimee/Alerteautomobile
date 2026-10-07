@@ -2,11 +2,17 @@ import 'package:flutter/material.dart';
 import '../../../metier/services/api_service.dart';
 import '../../../metier/services/storage_service.dart';
 import '../../../metier/models/user_model.dart';
+import 'profil_admin_screen.dart';
 
 class AbonnementsAdminScreen extends StatefulWidget {
   final UserModel user;
+  final bool showAppBar;
 
-  const AbonnementsAdminScreen({super.key, required this.user});
+  const AbonnementsAdminScreen({
+    super.key,
+    required this.user,
+    this.showAppBar = true,
+  });
 
   @override
   State<AbonnementsAdminScreen> createState() => _AbonnementsAdminScreenState();
@@ -85,31 +91,65 @@ class _AbonnementsAdminScreenState extends State<AbonnementsAdminScreen> {
 
   @override
   Widget build(BuildContext context) {
+    Widget content = _isLoading
+        ? const Center(child: CircularProgressIndicator())
+        : RefreshIndicator(
+            onRefresh: _fetchData,
+            child: ListView(
+              padding: const EdgeInsets.all(16),
+              children: [
+                if (_statistiques != null) _buildStatistiquesCard(),
+                const SizedBox(height: 20),
+                _buildFiltres(),
+                const SizedBox(height: 10),
+                if (_abonnements.isEmpty)
+                  const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 40),
+                    child: Center(child: Text("Aucun abonnement trouvé")),
+                  )
+                else
+                  ..._abonnements.map(_buildAbonnementCard),
+              ],
+            ),
+          );
+
+    if (!widget.showAppBar) return content;
+
     return Scaffold(
       appBar: AppBar(
         title: const Text("Abonnements des automobilistes"),
+        actions: [
+          InkWell(
+            borderRadius: BorderRadius.circular(20),
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => ProfilAdminScreen(user: widget.user),
+                ),
+              );
+            },
+            child: Padding(
+              padding: const EdgeInsets.only(right: 15.0, left: 5.0),
+              child: CircleAvatar(
+                radius: 18,
+                backgroundColor: const Color(0xFF00838F),
+                child: Text(
+                  widget.user.nom.trim().isNotEmpty
+                      ? widget.user.nom.trim()[0].toUpperCase()
+                      : 'A',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : RefreshIndicator(
-        onRefresh: _fetchData,
-        child: ListView(
-          padding: const EdgeInsets.all(16),
-          children: [
-            if (_statistiques != null) _buildStatistiquesCard(),
-            const SizedBox(height: 20),
-            _buildFiltres(),
-            const SizedBox(height: 10),
-            if (_abonnements.isEmpty)
-              const Padding(
-                padding: EdgeInsets.symmetric(vertical: 40),
-                child: Center(child: Text("Aucun abonnement trouvé")),
-              )
-            else
-              ..._abonnements.map(_buildAbonnementCard),
-          ],
-        ),
-      ),
+      body: content,
     );
   }
 

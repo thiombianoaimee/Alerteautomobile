@@ -14,6 +14,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   bool chargement = true;
   String? erreur;
   bool afficherNotificationsPrecedentes = false;
+  bool horsLigne = false;
 
   @override
   void initState() {
@@ -39,12 +40,14 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       if (!mounted) return;
 
       setState(() {
-        // Affiche toutes les notifications, y compris les alertes de seuil configurées par l'admin
         notifications = resultat;
         chargement = false;
+        if (ApiService.dernierResultatHorsLigne) {
+          horsLigne = true;
+        }
       });
 
-      if (notifications.isNotEmpty) {
+      if (notifications.isNotEmpty && !horsLigne) {
         await ApiService.markNotificationsAsRead(token);
       }
     } catch (e) {
@@ -99,6 +102,31 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
 
   List<dynamic> get notificationsPrecedentes {
     return notifications.where((n) => !estNotificationRecente(n)).toList();
+  }
+
+  Widget _bandeauHorsLigne() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 15),
+      margin: const EdgeInsets.only(bottom: 16),
+      decoration: BoxDecoration(
+        color: Colors.grey[200],
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: Colors.grey[400]!),
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.wifi_off, color: Colors.grey[700], size: 20),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              "Mode hors connexion — données enregistrées localement.",
+              style: TextStyle(color: Colors.grey[700], fontSize: 13),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   Widget _construireNotification(dynamic notification) {
@@ -214,7 +242,23 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       );
     }
 
-    if (notifications.isEmpty) return _aucuneNotification();
+    if (notifications.isEmpty && !horsLigne) return _aucuneNotification();
+
+    if (notifications.isEmpty && horsLigne) {
+      return RefreshIndicator(
+        onRefresh: chargerNotifications,
+        color: Colors.blue,
+        child: ListView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 80),
+          children: [
+            _bandeauHorsLigne(),
+            const SizedBox(height: 100),
+            _aucuneNotification(),
+          ],
+        ),
+      );
+    }
 
     final recentes = notificationsRecentes;
     final precedentes = notificationsPrecedentes;
@@ -230,6 +274,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
           physics: const AlwaysScrollableScrollPhysics(),
           padding: const EdgeInsets.fromLTRB(16, 16, 16, 80), // Plus de padding en bas
           children: [
+            if (horsLigne) _bandeauHorsLigne(),
             if (recentes.isNotEmpty)
               ...recentes.map((n) => _construireNotification(n)),
             if (precedentes.isNotEmpty)

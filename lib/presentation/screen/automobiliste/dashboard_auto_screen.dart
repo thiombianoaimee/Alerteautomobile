@@ -25,13 +25,20 @@ class _DashboardAutoScreenState extends State<DashboardAutoScreen> {
   int _unreadCount = 0;
   String? _statutAlerte; // "alerte" ou "expire" (null = rien à afficher)
   String? _messageAlerte;
-  List<String>? _fonctionnalites; // null = pas encore chargé ou erreur (on n'affiche pas grisé dans ce cas)
+  List<String>? _fonctionnalites; // null = pas encore chargé ou erreur
+
   @override
   void initState() {
     super.initState();
-    _fetchNotificationCount();
-    _fetchSubscriptionStatus();
-    _fetchFonctionnalites();
+    _rafraichirDonnees();
+  }
+
+  Future<void> _rafraichirDonnees() async {
+    await Future.wait([
+      _fetchFonctionnalites(),
+      _fetchSubscriptionStatus(),
+      _fetchNotificationCount(),
+    ]);
   }
 
   Future<void> _fetchFonctionnalites() async {
@@ -43,11 +50,9 @@ class _DashboardAutoScreenState extends State<DashboardAutoScreen> {
       if (!mounted) return;
       setState(() {
         _fonctionnalites = fonc;
-
       });
     } catch (e) {
       debugPrint("Erreur fonctionnalités dashboard: $e");
-
     }
   }
 
@@ -73,10 +78,6 @@ class _DashboardAutoScreenState extends State<DashboardAutoScreen> {
       if (token == null) return;
 
       final data = await ApiService.getMySubscriptionStatus(token);
-      debugPrint("STATUT ABONNEMENT : ${data["statut"]}");
-      debugPrint("STATUT ALERTE : ${data["statutAlerte"]}");
-      debugPrint("MESSAGE ALERTE : ${data["messageAlerte"]}");
-      debugPrint("JOURS RESTANTS : ${data["joursRestants"]}");
       if (!mounted) return;
       setState(() {
         _statutAlerte = data["statutAlerte"];
@@ -126,17 +127,34 @@ class _DashboardAutoScreenState extends State<DashboardAutoScreen> {
                 _fetchNotificationCount();
               },
             ),
-          IconButton(
-            icon: const Icon(Icons.account_circle),
-            tooltip: "Mon profil",
-            onPressed: () {
-              Navigator.push(
+          InkWell(
+            borderRadius: BorderRadius.circular(20),
+            onTap: () async {
+              await Navigator.push(
                 context,
                 MaterialPageRoute(
                   builder: (context) => ProfilAutoScreen(user: widget.user),
                 ),
               );
+              _rafraichirDonnees();
             },
+            child: Padding(
+              padding: const EdgeInsets.only(right: 15.0, left: 5.0),
+              child: CircleAvatar(
+                radius: 18,
+                backgroundColor: const Color(0xFF00838F),
+                child: Text(
+                  widget.user.nom.trim().isNotEmpty
+                      ? widget.user.nom.trim()[0].toUpperCase()
+                      : 'A',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                  ),
+                ),
+              ),
+            ),
           ),
         ],
       ),
@@ -171,6 +189,7 @@ class _DashboardAutoScreenState extends State<DashboardAutoScreen> {
                     "Enregistrer ses véhicules",
                     VehiculesScreen(user: widget.user),
                     Colors.blue,
+                    onRetour: _rafraichirDonnees,
                   ),
                   _menuCard(
                     context,
@@ -178,14 +197,17 @@ class _DashboardAutoScreenState extends State<DashboardAutoScreen> {
                     " Prendre rendez-vous",
                     RendezVousScreen(user: widget.user),
                     Colors.green,
-                    active: _fonctionnalites == null  || _fonctionnalites!.contains("prise_rdv"),
+                    active: _fonctionnalites == null ||
+                        _fonctionnalites!.contains("prise_rdv"),
+                    onRetour: _rafraichirDonnees,
                   ),
-                    _menuCard(
+                  _menuCard(
                     context,
                     Icons.card_membership,
                     "Mon Abonnement",
                     SubscriptionsScreen(user: widget.user),
                     Colors.orange,
+                    onRetour: _rafraichirDonnees,
                   ),
                   Card(
                     elevation: 4,
@@ -213,8 +235,8 @@ class _DashboardAutoScreenState extends State<DashboardAutoScreen> {
                         size: 18,
                         color: Colors.grey,
                       ),
-                      onTap: () {
-                        Navigator.push(
+                      onTap: () async {
+                        await Navigator.push(
                           context,
                           MaterialPageRoute(
                             builder: (context) => SuiviAutomobilisteScreen(
@@ -222,6 +244,7 @@ class _DashboardAutoScreenState extends State<DashboardAutoScreen> {
                             ),
                           ),
                         );
+                        await _rafraichirDonnees();
                       },
                     ),
                   )
@@ -244,17 +267,18 @@ class _DashboardAutoScreenState extends State<DashboardAutoScreen> {
     final Color couleurBordure = expire ? Colors.red[200]! : Colors.orange[200]!;
     final Color couleurTexte = expire ? Colors.red : Colors.orange[800]!;
     final IconData icone =
-    expire ? Icons.error_outline : Icons.warning_amber_rounded;
+        expire ? Icons.error_outline : Icons.warning_amber_rounded;
 
     return InkWell(
       borderRadius: BorderRadius.circular(12),
-      onTap: () {
-        Navigator.push(
+      onTap: () async {
+        await Navigator.push(
           context,
           MaterialPageRoute(
             builder: (context) => SubscriptionsScreen(user: widget.user),
           ),
         );
+        await _rafraichirDonnees();
       },
       child: Container(
         width: double.infinity,
@@ -272,8 +296,8 @@ class _DashboardAutoScreenState extends State<DashboardAutoScreen> {
             Expanded(
               child: Text(
                 _messageAlerte!,
-                style:
-                TextStyle(color: couleurTexte, fontWeight: FontWeight.w600),
+                style: TextStyle(
+                    color: couleurTexte, fontWeight: FontWeight.w600),
               ),
             ),
             Icon(Icons.arrow_forward_ios, size: 14, color: couleurTexte),
@@ -283,9 +307,16 @@ class _DashboardAutoScreenState extends State<DashboardAutoScreen> {
     );
   }
 
-  Widget _menuCard(BuildContext context, IconData icon, String title,
-      Widget page, Color color,
-      {bool badge = false, bool active = true}) {
+  Widget _menuCard(
+    BuildContext context,
+    IconData icon,
+    String title,
+    Widget page,
+    Color color, {
+    bool badge = false,
+    bool active = true,
+    Future<void> Function()? onRetour,
+  }) {
     return TweenAnimationBuilder(
       duration: const Duration(milliseconds: 500),
       tween: Tween<double>(begin: 0, end: 1),
@@ -301,35 +332,38 @@ class _DashboardAutoScreenState extends State<DashboardAutoScreen> {
       child: InkWell(
         borderRadius: BorderRadius.circular(15),
         onTap: active
-            ? () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => page,
-            ),
-          );
-        }
+            ? () async {
+                await Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => page,
+                  ),
+                );
+                await onRetour?.call();
+              }
             : () {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: const Text(
-                  "Votre abonnement ne permet pas d'accéder à cette fonctionnalité."),
-              backgroundColor: Colors.orange,
-              action: SnackBarAction(
-                label: "VOIR LES OFFRES",
-                textColor: Colors.white,
-                onPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => SubscriptionsScreen(user: widget.user),
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: const Text(
+                        "Votre abonnement ne permet pas d'accéder à cette fonctionnalité."),
+                    backgroundColor: Colors.orange,
+                    action: SnackBarAction(
+                      label: "VOIR LES OFFRES",
+                      textColor: Colors.white,
+                      onPressed: () async {
+                        await Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) =>
+                                SubscriptionsScreen(user: widget.user),
+                          ),
+                        );
+                        await _rafraichirDonnees();
+                      },
                     ),
-                  );
-                },
-              ),
-            ),
-          );
-        },
+                  ),
+                );
+              },
         child: Card(
           elevation: active ? 5 : 1,
           margin: const EdgeInsets.only(bottom: 15),

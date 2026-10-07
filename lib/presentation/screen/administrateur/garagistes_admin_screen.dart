@@ -7,12 +7,14 @@ import 'creneau_admin_screen.dart';
 import 'rdv_garagiste_admin_screen.dart';
 
 class GaragistesAdminScreen extends StatefulWidget {
-final UserModel user;
+  final UserModel user;
+  final bool showAppBar;
 
-const GaragistesAdminScreen({
-super.key,
-required this.user,
-});
+  const GaragistesAdminScreen({
+    super.key,
+    required this.user,
+    this.showAppBar = true,
+  });
 
 @override
 State<GaragistesAdminScreen> createState() =>
@@ -239,413 +241,188 @@ content: Text(
 
 @override
 Widget build(BuildContext context) {
-
-return Scaffold(
-
-appBar: AppBar(
-
-title: const Text(
-"Garagistes",
-),
-
-actions: [
-
-// Actualiser
-IconButton(
-onPressed:
-chargerGaragistes,
-
-icon: const Icon(
-Icons.refresh,
-),
-),
-
-// Profil administrateur
-IconButton(
-
-icon: const Icon(
-Icons.account_circle,
-size: 30,
-),
-
-tooltip: "Mon profil",
-
-onPressed: () {
-
-Navigator.push(
-context,
-
-MaterialPageRoute(
-builder: (context) =>
-ProfilAdminScreen(
-user: widget.user,
-),
-),
-);
-},
-),
-],
-),
-
-// ========================================================
-// BODY
-// ========================================================
-
-body: isLoading
-
-? const Center(
-child:
-CircularProgressIndicator(),
-)
-
-    : garagistes.isEmpty
-
-? const Center(
-child: Text(
-"Aucun garagiste trouvé",
-style: TextStyle(
-fontSize: 16,
-),
-),
-)
-
-    : ListView.builder(
-
-padding:
-const EdgeInsets.all(10),
-
-itemCount:
-garagistes.length,
-
-itemBuilder:
-(context, index) {
-
-final garagiste =
-garagistes[index];
-
-// =================================================
-// INFORMATIONS
-// =================================================
-
-final nom =
-garagiste["nom"]
-    ?.toString() ??
-"Inconnu";
-
-final email =
-garagiste["email"]
-    ?.toString() ??
-"Non renseigné";
-
-final telephone =
-garagiste["telephone"]
-    ?.toString() ??
-"Non renseigné";
-
-final adresse =
-garagiste["adresse"]
-    ?.toString() ??
-"Non renseignée";
-
-final id =
-garagiste["_id"]
-    ?.toString();
-
-// =================================================
-// STATUT
-// =================================================
-
-final actif =
-garagiste["actif"] != false;
-
-// =================================================
-// COMPTEURS
-// =================================================
-
-final nombreCreneaux =
-nombreDisponibilites[
-id ?? ""
-] ??
-0;
-
-final nombreRendezVous =
-nombreRdv[
-id ?? ""
-] ??
-0;
-
-// =================================================
-// CARD
-// =================================================
-
-return Card(
-
-margin:
-const EdgeInsets.only(
-bottom: 10,
-),
-
-child: Padding(
-
-padding:
-const EdgeInsets.all(12),
-
-child: Column(
-
-crossAxisAlignment:
-CrossAxisAlignment.start,
-
-children: [
-
-// ==========================================
-// NOM + STATUT
-// ==========================================
-
-Row(
-
-children: [
-
-const CircleAvatar(
-child: Icon(
-Icons.build,
-),
-),
-
-const SizedBox(
-width: 10,
-),
-
-Expanded(
-
-child: Text(
-
-nom,
-
-style:
-const TextStyle(
-fontWeight:
-FontWeight.bold,
-fontSize: 16,
-),
-),
-),
-
-// Badge statut
-Container(
-
-padding:
-const EdgeInsets
-    .symmetric(
-horizontal: 8,
-vertical: 4,
-),
-
-decoration:
-BoxDecoration(
-
-color: actif
-? Colors.green
-    .withValues(
-alpha: 0.1,
-)
-    : Colors.red
-    .withValues(
-alpha: 0.1,
-),
-
-borderRadius:
-BorderRadius
-    .circular(
-8,
-),
-),
-
-child: Text(
-
-actif
-? "Actif"
-    : "Désactivé",
-
-style: TextStyle(
-
-color: actif
-? Colors.green
-    : Colors.red,
-
-fontWeight:
-FontWeight.bold,
-),
-),
-),
-],
-),
-
-const SizedBox(
-height: 10,
-),
-
-// ==========================================
-// INFORMATIONS
-// ==========================================
-
-Text(
-"Email : $email",
-),
-
-Text(
-"Téléphone : $telephone",
-),
-
-Text(
-"Adresse : $adresse",
-),
-
-const SizedBox(
-height: 10,
-),
-
-// ==========================================
-// DISPONIBILITES + RDV
-// ==========================================
-
-Row(
-
-children: [
-
-// DISPONIBILITES
-const Icon(
-Icons.access_time,
-size: 20,
-),
-
-const SizedBox(
-width: 5,
-),
-
-InkWell(
-
-onTap: id == null
-? null
-    : () {
-
-ouvrirDisponibilites(
-id,
-nom,
-);
-},
-
-child: Text(
-
-"Disponibilités : "
-"$nombreCreneaux",
-
-style:
-const TextStyle(
-color:
-Colors.blue,
-fontWeight:
-FontWeight.bold,
-),
-),
-),
-
-const SizedBox(
-width: 25,
-),
-
-// RENDEZ-VOUS
-const Icon(
-Icons.calendar_month,
-size: 20,
-),
-
-const SizedBox(
-width: 5,
-),
-
-InkWell(
-
-onTap: id == null
-? null
-    : () {
-
-ouvrirRendezVous(
-id,
-nom,
-);
-},
-
-child: Text(
-
-"RDV : "
-"$nombreRendezVous",
-
-style:
-const TextStyle(
-color:
-Colors.blue,
-fontWeight:
-FontWeight.bold,
-),
-),
-),
-],
-),
-
-const SizedBox(
-height: 10,
-),
-
-// ==========================================
-// STATUT + BOUTON
-// ==========================================
-
-Row(
-
-mainAxisAlignment:
-MainAxisAlignment
-    .spaceBetween,
-
-children: [
-
-Text(
-
-actif
-? "Statut : 🟢 Actif"
-    : "Statut : 🔴 Désactivé",
-
-style:
-const TextStyle(
-fontWeight:
-FontWeight.bold,
-),
-),
-
-ElevatedButton(
-
-onPressed: () {
-
-changerStatut(
-garagiste,
-);
-},
-
-child: Text(
-
-actif
-? "Désactiver"
-    : "Activer",
-),
-),
-],
-),
-],
-),
-),
-);
-},
-),
-);
+  Widget bodyContent = isLoading
+      ? const Center(
+          child: CircularProgressIndicator(),
+        )
+      : garagistes.isEmpty
+          ? const Center(
+              child: Text(
+                "Aucun garagiste trouvé",
+                style: TextStyle(
+                  fontSize: 16,
+                ),
+              ),
+            )
+          : ListView.builder(
+              padding: const EdgeInsets.all(10),
+              itemCount: garagistes.length,
+              itemBuilder: (context, index) {
+                final garagiste = garagistes[index];
+
+                final nom = garagiste["nom"]?.toString() ?? "Inconnu";
+                final email = garagiste["email"]?.toString() ?? "Non renseigné";
+                final telephone =
+                    garagiste["telephone"]?.toString() ?? "Non renseigné";
+                final adresse =
+                    garagiste["adresse"]?.toString() ?? "Non renseignée";
+                final id = garagiste["_id"]?.toString();
+                final actif = garagiste["actif"] != false;
+
+                final nombreCreneaux = nombreDisponibilites[id ?? ""] ?? 0;
+                final nombreRendezVous = nombreRdv[id ?? ""] ?? 0;
+
+                return Card(
+                  margin: const EdgeInsets.only(bottom: 10),
+                  child: Padding(
+                    padding: const EdgeInsets.all(12),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            const CircleAvatar(
+                              child: Icon(Icons.build),
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Text(
+                                nom,
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 16,
+                                ),
+                              ),
+                            ),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 4,
+                              ),
+                              decoration: BoxDecoration(
+                                color: actif
+                                    ? Colors.green.withValues(alpha: 0.1)
+                                    : Colors.red.withValues(alpha: 0.1),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Text(
+                                actif ? "Actif" : "Désactivé",
+                                style: TextStyle(
+                                  color: actif ? Colors.green : Colors.red,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 10),
+                        Text("Email : $email"),
+                        Text("Téléphone : $telephone"),
+                        Text("Adresse : $adresse"),
+                        const SizedBox(height: 10),
+                        Row(
+                          children: [
+                            const Icon(Icons.access_time, size: 20),
+                            const SizedBox(width: 5),
+                            InkWell(
+                              onTap: id == null
+                                  ? null
+                                  : () => ouvrirDisponibilites(id, nom),
+                              child: Text(
+                                "Disponibilités : $nombreCreneaux",
+                                style: const TextStyle(
+                                  color: Colors.blue,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 25),
+                            const Icon(Icons.calendar_month, size: 20),
+                            const SizedBox(width: 5),
+                            InkWell(
+                              onTap: id == null
+                                  ? null
+                                  : () => ouvrirRendezVous(id, nom),
+                              child: Text(
+                                "RDV : $nombreRendezVous",
+                                style: const TextStyle(
+                                  color: Colors.blue,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 10),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              actif ? "Statut : 🟢 Actif" : "Statut : 🔴 Désactivé",
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            ElevatedButton(
+                              onPressed: () => changerStatut(garagiste),
+                              child: Text(actif ? "Désactiver" : "Activer"),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              },
+            );
+
+  if (!widget.showAppBar) {
+    return RefreshIndicator(
+      onRefresh: chargerGaragistes,
+      child: bodyContent,
+    );
+  }
+
+  return Scaffold(
+    appBar: AppBar(
+      title: const Text("Garagistes"),
+      actions: [
+        IconButton(
+          onPressed: chargerGaragistes,
+          icon: const Icon(Icons.refresh),
+        ),
+        InkWell(
+          borderRadius: BorderRadius.circular(20),
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => ProfilAdminScreen(user: widget.user),
+              ),
+            );
+          },
+          child: Padding(
+            padding: const EdgeInsets.only(right: 15.0, left: 5.0),
+            child: CircleAvatar(
+              radius: 18,
+              backgroundColor: const Color(0xFF00838F),
+              child: Text(
+                widget.user.nom.trim().isNotEmpty
+                    ? widget.user.nom.trim()[0].toUpperCase()
+                    : 'A',
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16,
+                ),
+              ),
+            ),
+          ),
+        ),
+      ],
+    ),
+    body: bodyContent,
+  );
 }
 }
 

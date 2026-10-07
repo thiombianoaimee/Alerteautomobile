@@ -25,18 +25,36 @@ class AccueilScreen extends StatelessWidget {
         child: SafeArea(
           child: Column(
             children: [
-              const Expanded(
+              Expanded(
                 flex: 2,
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Icon(
-                      Icons.directions_car_rounded,
-                      size: 100,
-                      color: Colors.white,
+                    Container(
+                      padding: const EdgeInsets.all(22),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.18),
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: Colors.white.withValues(alpha: 0.3),
+                          width: 2,
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.1),
+                            blurRadius: 20,
+                            offset: const Offset(0, 10),
+                          ),
+                        ],
+                      ),
+                      child: const Icon(
+                        Icons.directions_car_rounded,
+                        size: 70,
+                        color: Colors.white,
+                      ),
                     ),
-                    SizedBox(height: 10),
-                    Text(
+                    const SizedBox(height: 18),
+                    const Text(
                       "VisiteAuto BF",
                       style: TextStyle(
                         fontSize: 32,

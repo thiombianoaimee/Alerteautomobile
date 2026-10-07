@@ -47,4 +47,32 @@ class StorageService {
     await prefs.remove("token");
     await prefs.remove("userId");
   }
+
+  // ========================================================
+  // CACHE GÉNÉRIQUE (pour le mode hors connexion)
+  // Stocke n'importe quelle réponse API (déjà en JSON texte)
+  // sous une clé donnée, avec la date de sauvegarde.
+  // ========================================================
+
+  static Future<void> saveCache(String cle, String jsonBrut) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString("cache_$cle", jsonBrut);
+    await prefs.setString(
+      "cache_${cle}_date",
+      DateTime.now().toIso8601String(),
+    );
+  }
+
+  static Future<String?> getCache(String cle) async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString("cache_$cle");
+  }
+
+  static Future<DateTime?> getCacheDate(String cle) async {
+    final prefs = await SharedPreferences.getInstance();
+    final dateStr = prefs.getString("cache_${cle}_date");
+    if (dateStr == null) return null;
+    return DateTime.tryParse(dateStr);
+  }
+
 }

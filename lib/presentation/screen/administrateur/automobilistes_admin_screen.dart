@@ -7,10 +7,12 @@ import 'vehicule_admin_screen.dart';
 import 'rdv_admin_screen.dart';
 class AutomobilistesAdminScreen extends StatefulWidget {
   final UserModel user;
+  final bool showAppBar;
 
   const AutomobilistesAdminScreen({
     super.key,
     required this.user,
+    this.showAppBar = true,
   });
 
   @override
@@ -155,315 +157,190 @@ class _AutomobilistesAdminScreenState
 
   @override
   Widget build(BuildContext context) {
+    Widget bodyContent = isLoading
+        ? const Center(child: CircularProgressIndicator())
+        : automobilistes.isEmpty
+            ? const Center(
+                child: Text(
+                  "Aucun automobiliste trouvé",
+                  style: TextStyle(fontSize: 16),
+                ),
+              )
+            : ListView.builder(
+                padding: const EdgeInsets.all(10),
+                itemCount: automobilistes.length,
+                itemBuilder: (context, index) {
+                  final automobiliste = automobilistes[index];
+
+                  final nom = automobiliste["nom"]?.toString() ?? "Inconnu";
+                  final email = automobiliste["email"]?.toString() ?? "Non renseigné";
+                  final telephone = automobiliste["telephone"]?.toString() ?? "Non renseigné";
+                  final adresse = automobiliste["adresse"]?.toString() ?? "Non renseignée";
+                  final actif = automobiliste["actif"] != false;
+
+                  return Card(
+                    margin: const EdgeInsets.only(bottom: 10),
+                    child: Padding(
+                      padding: const EdgeInsets.all(12),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              const CircleAvatar(child: Icon(Icons.person)),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Text(
+                                  nom,
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 16,
+                                  ),
+                                ),
+                              ),
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 4,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: actif
+                                      ? Colors.green.withValues(alpha: 0.1)
+                                      : Colors.red.withValues(alpha: 0.1),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Text(
+                                  actif ? "Actif" : "Désactivé",
+                                  style: TextStyle(
+                                    color: actif ? Colors.green : Colors.red,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 10),
+                          Text("Email : $email"),
+                          Text("Téléphone : $telephone"),
+                          Text("Adresse : $adresse"),
+                          const SizedBox(height: 10),
+                          Row(
+                            children: [
+                              const Icon(Icons.directions_car, size: 20),
+                              const SizedBox(width: 5),
+                              InkWell(
+                                onTap: () {
+                                  final id = automobiliste["_id"]?.toString();
+                                  if (id == null) return;
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) => VehiculesAdminScreen(
+                                        automobilisteId: id,
+                                      ),
+                                    ),
+                                  );
+                                },
+                                child: Text(
+                                  "Véhicules : ${nombreVehicules[automobiliste["_id"]?.toString()] ?? 0}",
+                                  style: const TextStyle(
+                                    color: Colors.blue,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 25),
+                              const Icon(Icons.calendar_month, size: 20),
+                              const SizedBox(width: 5),
+                              InkWell(
+                                onTap: () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) => RendezVousAdminScreen(
+                                        automobilisteId:
+                                            automobiliste["_id"]?.toString() ?? "",
+                                      ),
+                                    ),
+                                  );
+                                },
+                                child: Text(
+                                  "RDV : ${nombreRdv[automobiliste["_id"]?.toString()] ?? 0}",
+                                  style: const TextStyle(
+                                    color: Colors.blue,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 10),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                actif ? "Statut : 🟢 Actif" : "Statut : 🔴 Désactivé",
+                                style: const TextStyle(fontWeight: FontWeight.bold),
+                              ),
+                              ElevatedButton(
+                                onPressed: () => changerStatut(automobiliste),
+                                child: Text(actif ? "Désactiver" : "Activer"),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                },
+              );
+
+    if (!widget.showAppBar) {
+      return RefreshIndicator(
+        onRefresh: chargerAutomobilistes,
+        child: bodyContent,
+      );
+    }
 
     return Scaffold(
-
       appBar: AppBar(
-
         title: const Text("Automobilistes"),
-
         actions: [
-
           IconButton(
             onPressed: chargerAutomobilistes,
             icon: const Icon(Icons.refresh),
           ),
-
-          IconButton(
-            icon: const Icon(
-              Icons.account_circle,
-              size: 30,
-            ),
-            tooltip: "Mon profil",
-            onPressed: () {
-
+          InkWell(
+            borderRadius: BorderRadius.circular(20),
+            onTap: () {
               Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (context) =>
-                      ProfilAdminScreen(
-                        user: widget.user,
-                      ),
+                  builder: (context) => ProfilAdminScreen(user: widget.user),
                 ),
               );
-
             },
-          ),
-
-        ],
-      ),
-
-      body: isLoading
-
-          ? const Center(
-        child: CircularProgressIndicator(),
-      )
-
-          : automobilistes.isEmpty
-
-          ? const Center(
-        child: Text(
-          "Aucun automobiliste trouvé",
-          style: TextStyle(
-            fontSize: 16,
-          ),
-        ),
-      )
-
-          : ListView.builder(
-
-        padding: const EdgeInsets.all(10),
-
-        itemCount: automobilistes.length,
-
-        itemBuilder: (context, index) {
-
-          final automobiliste =
-          automobilistes[index];
-
-          final nom =
-              automobiliste["nom"]
-                  ?.toString() ??
-                  "Inconnu";
-
-          final email =
-              automobiliste["email"]
-                  ?.toString() ??
-                  "Non renseigné";
-
-          final telephone =
-              automobiliste["telephone"]
-                  ?.toString() ??
-                  "Non renseigné";
-
-          final adresse =
-              automobiliste["adresse"]
-                  ?.toString() ??
-                  "Non renseignée";
-
-          final actif =
-              automobiliste["actif"] != false;
-
-          return Card(
-
-            margin:
-            const EdgeInsets.only(
-              bottom: 10,
-            ),
-
             child: Padding(
-
-              padding:
-              const EdgeInsets.all(12),
-
-              child: Column(
-
-                crossAxisAlignment:
-                CrossAxisAlignment.start,
-
-                children: [
-
-                  // Nom + statut
-                  Row(
-
-                    children: [
-
-                      const CircleAvatar(
-                        child: Icon(
-                          Icons.person,
-                        ),
-                      ),
-
-                      const SizedBox(
-                        width: 10,
-                      ),
-
-                      Expanded(
-                        child: Text(
-                          nom,
-                          style:
-                          const TextStyle(
-                            fontWeight:
-                            FontWeight.bold,
-                            fontSize: 16,
-                          ),
-                        ),
-                      ),
-
-                      Container(
-                        padding:
-                        const EdgeInsets
-                            .symmetric(
-                          horizontal: 8,
-                          vertical: 4,
-                        ),
-
-                        decoration: BoxDecoration(
-                          color: actif
-                              ? Colors.green.withValues(alpha: 0.1)
-                              : Colors.red.withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-
-                        child: Text(
-                          actif
-                              ? "Actif"
-                              : "Désactivé",
-                          style: TextStyle(
-                            color: actif
-                                ? Colors.green
-                                : Colors.red,
-                            fontWeight:
-                            FontWeight.bold,
-                          ),
-                        ),
-                      ),
-
-                    ],
+              padding: const EdgeInsets.only(right: 15.0, left: 5.0),
+              child: CircleAvatar(
+                radius: 18,
+                backgroundColor: const Color(0xFF00838F),
+                child: Text(
+                  widget.user.nom.trim().isNotEmpty
+                      ? widget.user.nom.trim()[0].toUpperCase()
+                      : 'A',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
                   ),
-
-                  const SizedBox(
-                    height: 10,
-                  ),
-
-                  Text(
-                    "Email : $email",
-                  ),
-
-                  Text(
-                    "Téléphone : $telephone",
-                  ),
-
-                  Text(
-                    "Adresse : $adresse",
-                  ),
-
-                  const SizedBox(
-                    height: 10,
-                  ),
-
-                  // Véhicules et RDV
-                  Row(
-                    children: [
-                      const Icon(
-                        Icons.directions_car,
-                        size: 20,
-                      ),
-
-                      const SizedBox(width: 5),
-
-                      InkWell(
-                        onTap: () {
-                          final id = automobiliste["_id"]?.toString();
-
-                          if (id == null) {
-                            return;
-                          }
-
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => VehiculesAdminScreen(
-                                automobilisteId: id,
-                              ),
-                            ),
-                          );
-                        },
-
-                        child: Text(
-                          "Véhicules : "
-                              "${nombreVehicules[automobiliste["_id"]?.toString()] ?? 0}",
-
-                          style: const TextStyle(
-                            color: Colors.blue,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
-
-                      const SizedBox(width: 25),
-
-                      const Icon(
-                        Icons.calendar_month,
-                        size: 20,
-                      ),
-
-                      const SizedBox(width: 5),
-                      InkWell(
-                        onTap: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => RendezVousAdminScreen(
-                                automobilisteId:
-                                automobiliste["_id"]?.toString() ?? "",
-                              ),
-                            ),
-                          );
-                        },
-                        child: Text(
-                          "RDV : "
-                              "${nombreRdv[
-                          automobiliste["_id"]?.toString()
-                          ] ?? 0}",
-                          style: const TextStyle(
-                            color: Colors.blue,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
-
-                    ],
-                  ),
-
-                  const SizedBox(
-                    height: 10,
-                  ),
-
-                  // Statut + bouton
-                  Row(
-
-                    mainAxisAlignment:
-                    MainAxisAlignment
-                        .spaceBetween,
-
-                    children: [
-
-                      Text(
-                        actif
-                            ? "Statut : 🟢 Actif"
-                            : "Statut : 🔴 Désactivé",
-                        style:
-                        const TextStyle(
-                          fontWeight:
-                          FontWeight.bold,
-                        ),
-                      ),
-
-                      ElevatedButton(
-
-                        onPressed: () {
-                          changerStatut(
-                            automobiliste,
-                          );
-                        },
-
-                        child: Text(
-                          actif
-                              ? "Désactiver"
-                              : "Activer",
-                        ),
-                      ),
-
-                    ],
-                  ),
-
-                ],
+                ),
               ),
             ),
-          );
-        },
+          ),
+        ],
       ),
+      body: bodyContent,
     );
   }
 }

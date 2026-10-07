@@ -120,7 +120,7 @@ class _LoginScreenState extends State<LoginScreen> {
         child: Column(
           children: [
             Container(
-              height: 150,
+              height: 100,
               width: double.infinity,
               decoration: BoxDecoration(
                 color: Theme.of(context).primaryColor,
@@ -129,10 +129,16 @@ class _LoginScreenState extends State<LoginScreen> {
                   bottomRight: Radius.circular(50),
                 ),
               ),
-              child: const Icon(
-                Icons.directions_car_filled,
-                size: 80,
-                color: Colors.white,
+              child: const Center(
+                child: Text(
+                  "VisiteAuto BF",
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 1.2,
+                  ),
+                ),
               ),
             ),
             Padding(

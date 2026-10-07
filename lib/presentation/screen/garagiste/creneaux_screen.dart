@@ -3,6 +3,7 @@ import '../../../metier/services/api_service.dart';
 import '../../../metier/services/storage_service.dart';
 import '../../../metier/models/user_model.dart';
 import 'profil_garagiste_screen.dart';
+import 'notification_garagiste_screen.dart';
 
 class CreneauxScreen extends StatefulWidget {
 
@@ -293,24 +294,21 @@ class _CreneauxScreenState extends State<CreneauxScreen> {
         centerTitle: true,
 
         actions: [
-
           IconButton(
             icon: const Icon(Icons.notifications),
+            tooltip: "Notifications",
             onPressed: () {
-
-              Navigator.pushNamed(
+              Navigator.push(
                 context,
-                '/notifications',
+                MaterialPageRoute(
+                  builder: (context) => const NotificationsGaragisteScreen(),
+                ),
               );
-
             },
           ),
-
-
-          IconButton(
-            icon: const Icon(Icons.person),
-            onPressed: () {
-
+          InkWell(
+            borderRadius: BorderRadius.circular(20),
+            onTap: () {
               Navigator.push(
                 context,
                 MaterialPageRoute(
@@ -319,12 +317,26 @@ class _CreneauxScreenState extends State<CreneauxScreen> {
                   ),
                 ),
               );
-
             },
+            child: Padding(
+              padding: const EdgeInsets.only(right: 15.0, left: 5.0),
+              child: CircleAvatar(
+                radius: 18,
+                backgroundColor: const Color(0xFF00838F),
+                child: Text(
+                  widget.user.nom.trim().isNotEmpty
+                      ? widget.user.nom.trim()[0].toUpperCase()
+                      : 'G',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                  ),
+                ),
+              ),
+            ),
           ),
-
         ],
-
       ),
 
 
@@ -392,28 +404,6 @@ class _CreneauxScreenState extends State<CreneauxScreen> {
 
 
 
-            const Center(
-
-              child: Text(
-
-                "Les automobilistes pourront réserver uniquement pendant vos périodes disponibles.",
-
-                textAlign: TextAlign.center,
-
-                style: TextStyle(
-
-                  color: Colors.grey,
-
-                  fontSize: 15,
-
-                ),
-
-              ),
-
-            ),
-
-
-
             const SizedBox(height: 35),
 
 
@@ -421,7 +411,7 @@ class _CreneauxScreenState extends State<CreneauxScreen> {
 
             const Text(
 
-              "📅 Période de disponibilité",
+              "Période de disponibilité",
 
               style: TextStyle(
 
@@ -451,9 +441,7 @@ class _CreneauxScreenState extends State<CreneauxScreen> {
 
                 labelText: "Disponible à partir de",
 
-                prefixIcon: const Icon(
-                  Icons.calendar_today,
-                ),
+
 
                 border: OutlineInputBorder(
 
@@ -514,9 +502,6 @@ class _CreneauxScreenState extends State<CreneauxScreen> {
 
                 labelText: "Disponible jusqu'à",
 
-                prefixIcon: const Icon(
-                  Icons.calendar_today,
-                ),
 
                 border: OutlineInputBorder(
 
@@ -571,7 +556,7 @@ class _CreneauxScreenState extends State<CreneauxScreen> {
 
             const Text(
 
-              "🕒 Horaires de travail",
+              " Horaires de travail",
 
               style: TextStyle(
 

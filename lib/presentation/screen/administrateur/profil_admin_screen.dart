@@ -61,18 +61,19 @@ class _ProfilAdminScreenState extends State<ProfilAdminScreen> {
 
 
 
-            const CircleAvatar(
-
+            CircleAvatar(
               radius: 45,
-
-              child: Icon(
-
-                Icons.admin_panel_settings,
-
-                size: 50,
-
+              backgroundColor: const Color(0xFF00838F),
+              child: Text(
+                user.nom.trim().isNotEmpty
+                    ? user.nom.trim()[0].toUpperCase()
+                    : 'A',
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 44,
+                ),
               ),
-
             ),
 
 

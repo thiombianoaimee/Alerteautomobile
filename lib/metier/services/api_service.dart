@@ -2,7 +2,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'api_config.dart';
 import 'package:flutter/foundation.dart';
-
+import '../../../metier/services/storage_service.dart';
 class AbonnementException implements Exception {
   final String message;
   AbonnementException(this.message);
@@ -11,6 +11,9 @@ class AbonnementException implements Exception {
 }
 
 class ApiService {
+
+  // (pas du réseau) — utile pour afficher un bandeau "hors connexion"
+  static bool dernierResultatHorsLigne = false;
 
   // Connexion utilisateur
   static Future<Map<String, dynamic>> login(
@@ -173,7 +176,6 @@ class ApiService {
       },
     );
 
-    debugPrint("REPONSE VEHICULES ADMIN : ${response.body}");
 
     if (response.statusCode == 200) {
       return jsonDecode(response.body);
@@ -223,36 +225,31 @@ class ApiService {
 
 // Liste des véhicules par automobilistes
   static Future<List<dynamic>> getMyVehicles(String token) async {
+    const cle = "vehicules";
+    try {
+      final response = await http.get(
+        Uri.parse("${ApiConfig.baseUrl}/vehicles/mes-vehicules"),
+        headers: {
+          "Authorization": "Bearer $token",
+          "Content-Type": "application/json",
+        },
+      ).timeout(const Duration(seconds: 8));
 
-    final response = await http.get(
-
-      Uri.parse(
-        "${ApiConfig.baseUrl}/vehicles/mes-vehicules",
-      ),
-
-      headers: {
-
-        "Authorization": "Bearer $token",
-
-        "Content-Type": "application/json",
-
-      },
-
-    );
-
-
-    if(response.statusCode == 200){
-
-      return jsonDecode(response.body);
-
-    }else{
-
-      throw Exception(
-          "Erreur récupération véhicules"
-      );
-
+      if (response.statusCode == 200) {
+        await StorageService.saveCache(cle, response.body);
+        dernierResultatHorsLigne = false;
+        return jsonDecode(response.body);
+      } else {
+        throw Exception("Erreur récupération véhicules");
+      }
+    } catch (e) {
+      final cache = await StorageService.getCache(cle);
+      if (cache != null) {
+        dernierResultatHorsLigne = true;
+        return jsonDecode(cache);
+      }
+      rethrow;
     }
-
   }
 // Récupérer les véhicules d'un automobiliste précis - Admin
   static Future<List<dynamic>> getVehiclesByAutomobiliste(
@@ -545,25 +542,34 @@ class ApiService {
 
 // Récupérer les rendez-vous de l'automobiliste connecté
   static Future<List<dynamic>> getMesRendezVous(String token) async {
+    const cle = "rendez_vous";
+    try {
+      final response = await http.get(
+        Uri.parse("${ApiConfig.baseUrl}/appointments/mes-rendezvous"),
+        headers: {
+          "Authorization": "Bearer $token",
+          "Content-Type": "application/json",
+        },
+      ).timeout(const Duration(seconds: 8));
 
-    final response = await http.get(
-      Uri.parse("${ApiConfig.baseUrl}/appointments/mes-rendezvous"),
-      headers: {
-        "Authorization": "Bearer $token",
-        "Content-Type": "application/json",
-      },
-    );
-    debugPrint("REPONSE RDV : ${response.body}");
+      debugPrint("REPONSE RDV : ${response.body}");
 
-    if (response.statusCode == 200) {
-      return jsonDecode(response.body);
-    } else {
-      throw Exception(
-        "Erreur récupération rendez-vous : ${response.body}",
-      );
+      if (response.statusCode == 200) {
+        await StorageService.saveCache(cle, response.body);
+        dernierResultatHorsLigne = false;
+        return jsonDecode(response.body);
+      } else {
+        throw Exception("Erreur récupération rendez-vous : ${response.body}");
+      }
+    } catch (e) {
+      final cache = await StorageService.getCache(cle);
+      if (cache != null) {
+        dernierResultatHorsLigne = true;
+        return jsonDecode(cache);
+      }
+      rethrow;
     }
   }
-
 // Récupérer les demandes de rendez-vous du garagiste connecté
   static Future<List> getDemandesGaragiste(String token) async {
 
@@ -838,26 +844,34 @@ class ApiService {
 
   // Récupérer les notifications de l'automobiliste connecté
   static Future<List<dynamic>> getNotifications(String token) async {
+    const cle = "notifications";
+    try {
+      final response = await http.get(
+        Uri.parse(ApiConfig.notifications),
+        headers: {
+          "Authorization": "Bearer $token",
+          "Content-Type": "application/json",
+        },
+      ).timeout(const Duration(seconds: 8));
 
-    final response = await http.get(
-      Uri.parse(ApiConfig.notifications),
-      headers: {
-        "Authorization": "Bearer $token",
-        "Content-Type": "application/json",
-      },
-    );
+      debugPrint("REPONSE NOTIFICATIONS : ${response.body}");
 
-    debugPrint("REPONSE NOTIFICATIONS : ${response.body}");
-
-    if (response.statusCode == 200) {
-      return jsonDecode(response.body);
-    } else {
-      throw Exception(
-        "Erreur récupération notifications : ${response.body}",
-      );
+      if (response.statusCode == 200) {
+        await StorageService.saveCache(cle, response.body);
+        dernierResultatHorsLigne = false;
+        return jsonDecode(response.body);
+      } else {
+        throw Exception("Erreur récupération notifications : ${response.body}");
+      }
+    } catch (e) {
+      final cache = await StorageService.getCache(cle);
+      if (cache != null) {
+        dernierResultatHorsLigne = true;
+        return jsonDecode(cache);
+      }
+      rethrow;
     }
   }
-
   // Suspendre / réactiver les notifications de visite technique pour un véhicule
   static Future<bool> toggleNotificationsVehicule(String token, String vehiculeId) async {
     final response = await http.patch(
@@ -926,6 +940,27 @@ class ApiService {
       }
     }
   }
+// Souscrire à un plan (ou en changer)
+  static Future<Map<String, dynamic>> souscrireAbonnement(
+      String token, String planId) async {
+    final response = await http.post(
+      Uri.parse("${ApiConfig.baseUrl}/abonnements/souscrire"),
+      headers: {
+        "Authorization": "Bearer $token",
+        "Content-Type": "application/json",
+      },
+      body: jsonEncode({"planId": planId}),
+    );
+
+    final data = jsonDecode(response.body);
+
+    if (response.statusCode == 200) {
+      return data;
+    } else {
+      throw Exception(data["message"] ?? "Erreur lors de la souscription");
+    }
+  }
+
 
   // --- SYSTÈME D'ABONNEMENT ---
 

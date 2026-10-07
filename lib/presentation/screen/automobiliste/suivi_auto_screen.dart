@@ -24,6 +24,7 @@ class _SuiviAutomobilisteScreenState
 
   bool afficherVehicules = false;
   bool afficherRendezVous = false;
+  bool horsLigne = false;
 
   // ============================================================
   // FORMATAGE DE LA DATE
@@ -63,6 +64,9 @@ class _SuiviAutomobilisteScreenState
 
       setState(() {
         vehicules = liste;
+        if (ApiService.dernierResultatHorsLigne) {
+          horsLigne = true;
+        }
       });
     } catch (e) {
       debugPrint("Erreur chargement véhicules : $e");
@@ -89,6 +93,9 @@ class _SuiviAutomobilisteScreenState
 
       setState(() {
         rendezVous = liste;
+if (ApiService.dernierResultatHorsLigne) {
+horsLigne = true;
+}
       });
     } catch (e) {
       debugPrint("Erreur chargement rendez-vous : $e");
@@ -215,6 +222,30 @@ class _SuiviAutomobilisteScreenState
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+
+              if (horsLigne)
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 15),
+                  margin: const EdgeInsets.only(bottom: 20),
+                  decoration: BoxDecoration(
+                    color: Colors.grey[200],
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: Colors.grey[400]!),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(Icons.wifi_off, color: Colors.grey[700], size: 20),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          "Mode hors connexion — données enregistrées localement.",
+                          style: TextStyle(color: Colors.grey[700], fontSize: 13),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
 
               // ==================================================
               // SECTION MES VEHICULES
@@ -353,7 +384,6 @@ class _SuiviAutomobilisteScreenState
     child: Text(
     suspendu
     ? "Notifications suspendues pour ce véhicule "
-    "(ex: en panne, immobilisé)."
         : "Vous recevez les rappels de visite "
     "technique pour ce véhicule.",
     style: TextStyle(

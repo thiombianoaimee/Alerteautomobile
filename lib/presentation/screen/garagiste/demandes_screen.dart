@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../metier/models/user_model.dart';
 import 'profil_garagiste_screen.dart';
+import 'notification_garagiste_screen.dart';
 import '../../../metier/services/api_service.dart';
 import '../../../metier/services/storage_service.dart';
 
@@ -90,24 +91,21 @@ class _DemandesScreenState extends State<DemandesScreen> {
         centerTitle: true,
 
         actions: [
-
           IconButton(
             icon: const Icon(Icons.notifications),
+            tooltip: "Notifications",
             onPressed: () {
-
-              Navigator.pushNamed(
+              Navigator.push(
                 context,
-                '/notifications',
+                MaterialPageRoute(
+                  builder: (context) => const NotificationsGaragisteScreen(),
+                ),
               );
-
             },
           ),
-
-
-          IconButton(
-            icon: const Icon(Icons.person),
-            onPressed: () {
-
+          InkWell(
+            borderRadius: BorderRadius.circular(20),
+            onTap: () {
               Navigator.push(
                 context,
                 MaterialPageRoute(
@@ -116,10 +114,25 @@ class _DemandesScreenState extends State<DemandesScreen> {
                   ),
                 ),
               );
-
             },
+            child: Padding(
+              padding: const EdgeInsets.only(right: 15.0, left: 5.0),
+              child: CircleAvatar(
+                radius: 18,
+                backgroundColor: const Color(0xFF00838F),
+                child: Text(
+                  widget.user.nom.trim().isNotEmpty
+                      ? widget.user.nom.trim()[0].toUpperCase()
+                      : 'G',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                  ),
+                ),
+              ),
+            ),
           ),
-
         ],
 
       ),

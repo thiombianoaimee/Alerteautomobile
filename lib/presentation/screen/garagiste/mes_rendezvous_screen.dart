@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import '../../../metier/services/api_service.dart';
 import '../../../metier/services/storage_service.dart';
 import '../../../metier/models/user_model.dart';
+import 'profil_garagiste_screen.dart';
+import 'notification_garagiste_screen.dart';
 
 class MesRendezVousGaragisteScreen extends StatefulWidget {
 final UserModel user;
@@ -376,6 +378,48 @@ title: const Text(
 "Mes Rendez-vous",
 ),
 elevation: 0,
+actions: [
+IconButton(
+icon: const Icon(Icons.notifications),
+tooltip: "Notifications",
+onPressed: () {
+Navigator.push(
+context,
+MaterialPageRoute(
+builder: (context) => const NotificationsGaragisteScreen(),
+),
+);
+},
+),
+InkWell(
+borderRadius: BorderRadius.circular(20),
+onTap: () {
+Navigator.push(
+context,
+MaterialPageRoute(
+builder: (context) => ProfilGaragisteScreen(user: widget.user),
+),
+);
+},
+child: Padding(
+padding: const EdgeInsets.only(right: 15.0, left: 5.0),
+child: CircleAvatar(
+radius: 18,
+backgroundColor: const Color(0xFF00838F),
+child: Text(
+widget.user.nom.trim().isNotEmpty
+? widget.user.nom.trim()[0].toUpperCase()
+: 'G',
+style: const TextStyle(
+color: Colors.white,
+fontWeight: FontWeight.bold,
+fontSize: 16,
+),
+),
+),
+),
+),
+],
 ),
 
 body: _isLoading
